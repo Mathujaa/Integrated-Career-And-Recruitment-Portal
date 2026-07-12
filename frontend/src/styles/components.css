@@ -1,0 +1,253 @@
+/* ==========================================================================
+   Reusable UI Components Styling System
+   ========================================================================== */
+
+/* 1. Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  padding: 12px 24px;
+  gap: 8px;
+  font-size: 0.95rem;
+  transition: all var(--transition-fast);
+  user-select: none;
+  border: 2px solid transparent;
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background-color: var(--primary);
+  color: var(--text-white);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--primary-hover);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+}
+
+.btn-secondary {
+  background-color: var(--secondary);
+  color: var(--text-white);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--secondary-hover);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.25);
+}
+
+.btn-outline {
+  background-color: transparent;
+  border-color: var(--border-light);
+  color: var(--text-main);
+}
+
+.btn-outline:hover:not(:disabled) {
+  background-color: var(--bg-main);
+  border-color: var(--text-light);
+}
+
+.btn-text {
+  background: none;
+  color: var(--text-muted);
+  padding: 8px 16px;
+}
+
+.btn-text:hover:not(:disabled) {
+  color: var(--primary);
+}
+
+.btn-full {
+  width: 100%;
+}
+
+/* 2. Form Inputs */
+.input-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 20px;
+  width: 100%;
+}
+
+.input-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  transition: color var(--transition-fast);
+}
+
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-field {
+  width: 100%;
+  padding: 12px 16px;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  color: var(--text-main);
+  font-size: 0.95rem;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.input-field:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+  background-color: var(--bg-input-focus);
+}
+
+.input-error-border {
+  border-color: var(--error) !important;
+}
+
+.input-error-border:focus {
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1) !important;
+}
+
+.input-error-msg {
+  font-size: 0.8rem;
+  color: var(--error);
+  margin-top: 5px;
+  animation: fadeIn var(--transition-fast);
+}
+
+/* 3. Spinner Loader */
+.spinner-ring {
+  border: 3px solid rgba(0, 0, 0, 0.1);
+  border-left-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.spinner-sm { width: 20px; height: 20px; border-width: 2px; }
+.spinner-md { width: 40px; height: 40px; }
+.spinner-lg { width: 60px; height: 60px; }
+
+/* 4. Modals */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn var(--transition-fast);
+}
+
+.modal-content {
+  background-color: var(--bg-card);
+  border-radius: var(--radius-lg);
+  width: 90%;
+  max-width: 500px;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-light);
+  overflow: hidden;
+  animation: modalScale var(--transition-normal) cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalScale {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.modal-close {
+  color: var(--text-muted);
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.modal-close:hover {
+  color: var(--text-main);
+}
+
+.modal-body {
+  padding: 24px;
+}
+
+.modal-footer {
+  padding: 16px 24px;
+  background-color: var(--bg-main);
+  border-top: 1px solid var(--border-light);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* 5. Toasts Alert */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 9999;
+}
+
+.toast-item {
+  display: flex;
+  align-items: center;
+  background-color: var(--bg-card);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  min-width: 300px;
+  max-width: 450px;
+  box-shadow: var(--shadow-lg);
+  border-left: 4px solid var(--primary);
+  animation: slideIn var(--transition-normal) cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.toast-success { border-left-color: var(--success); }
+.toast-error { border-left-color: var(--error); }
+.toast-warning { border-left-color: var(--warning); }
+.toast-info { border-left-color: var(--accent); }
+
+.toast-msg {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-main);
+  margin-left: 12px;
+  flex: 1;
+}
+
+.toast-close {
+  color: var(--text-light);
+  font-size: 1.1rem;
+  margin-left: 12px;
+}
+
+.toast-close:hover {
+  color: var(--text-muted);
+}
