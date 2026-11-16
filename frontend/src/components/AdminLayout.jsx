@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import AdminSidebar from './AdminSidebar';
+import ThemeToggle from './ThemeToggle';
 import apiClient from '../services/api.client';
 
 const AdminLayout = ({ children }) => {
@@ -74,8 +75,11 @@ const AdminLayout = ({ children }) => {
           justifyContent: 'flex-end',
           alignItems: 'center',
           padding: '0 32px',
-          gap: '24px'
+          gap: '20px'
         }}>
+
+          {/* Theme Toggle */}
+          <ThemeToggle />
 
           {/* Notification Bell */}
           <div ref={notifRef} style={{ position: 'relative' }}>

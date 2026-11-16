@@ -16,7 +16,7 @@ class LogModel {
     try {
       await pool.execute(
         'INSERT INTO login_logs (user_id, ip_address, user_agent, login_status, failure_reason) VALUES (?, ?, ?, ?, ?)',
-        [userId, ipAddress || '127.0.0.1', userAgent || 'Unknown', status, failureReason || null]
+        [userId || null, ipAddress || '127.0.0.1', userAgent || 'Unknown', status, failureReason || null]
       );
     } catch (error) {
       console.error('Failed to write login log:', error);

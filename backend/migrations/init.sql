@@ -113,7 +113,7 @@ CREATE TABLE IF NOT EXISTS activity_logs (
 -- 9. login_logs Table
 CREATE TABLE IF NOT EXISTS login_logs (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
+    user_id INT NULL,
     login_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     ip_address VARCHAR(45) NOT NULL,
     user_agent VARCHAR(255) NOT NULL,

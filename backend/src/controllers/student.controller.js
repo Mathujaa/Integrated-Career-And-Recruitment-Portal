@@ -1,6 +1,9 @@
+import fs from 'fs';
+import path from 'path';
 import StudentModel from '../models/student.model.js';
 import JobModel from '../models/job.model.js';
 import EmailService from '../services/email.service.js';
+import RecommendationService, { CAREER_ROLES } from '../services/recommendation.service.js';
 import AppError from '../utils/AppError.js';
 import { HTTP_STATUS } from '../utils/constants.js';
 
@@ -31,6 +34,255 @@ class StudentController {
       res.status(HTTP_STATUS.OK).json({
         status: 'success',
         message: 'Profile updated successfully.'
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // Profile Photo Management
+  uploadProfilePhoto = async (req, res, next) => {
+    try {
+      const { photo } = req.body;
+      if (!photo || typeof photo !== 'string') {
+        return next(new AppError('Please provide an image payload.', HTTP_STATUS.BAD_REQUEST));
+      }
+
+      const matches = photo.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+      if (!matches || matches.length !== 3) {
+        return next(new AppError('Invalid image format. Expected base64 data URL.', HTTP_STATUS.BAD_REQUEST));
+      }
+
+      const mimeType = matches[1].toLowerCase();
+      const base64Data = matches[2];
+      const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!allowedMimes.includes(mimeType)) {
+        return next(new AppError('Unsupported image type. Only JPG, PNG, and WebP are allowed.', HTTP_STATUS.BAD_REQUEST));
+      }
+
+      const buffer = Buffer.from(base64Data, 'base64');
+      if (buffer.length > 5 * 1024 * 1024) {
+        return next(new AppError('File size exceeds the 5MB maximum limit.', HTTP_STATUS.BAD_REQUEST));
+      }
+
+      const ext = mimeType.includes('png') ? 'png' : (mimeType.includes('webp') ? 'webp' : 'jpg');
+      const filename = `avatar_${req.user.id}_${Date.now()}.${ext}`;
+      const uploadDir = path.join(process.cwd(), 'backend/public/uploads/avatars');
+      fs.mkdirSync(uploadDir, { recursive: true });
+
+      // Clean up previous uploaded avatar file for this user if local
+      const currentProfile = await StudentModel.getProfile(req.user.id);
+      if (currentProfile?.avatar_url && currentProfile.avatar_url.includes('/uploads/avatars/')) {
+        const oldFile = currentProfile.avatar_url.split('/uploads/avatars/')[1];
+        if (oldFile) {
+          const oldPath = path.join(uploadDir, oldFile);
+          if (fs.existsSync(oldPath)) {
+            try { fs.unlinkSync(oldPath); } catch (e) { console.warn('Could not delete old avatar:', e.message); }
+          }
+        }
+      }
+
+      const filePath = path.join(uploadDir, filename);
+      fs.writeFileSync(filePath, buffer);
+
+      const avatarUrl = `http://localhost:5000/uploads/avatars/${filename}`;
+      await StudentModel.updateAvatarUrl(req.user.id, avatarUrl);
+
+      res.status(HTTP_STATUS.OK).json({
+        status: 'success',
+        message: 'Profile photo uploaded successfully.',
+        avatar_url: avatarUrl
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  removeProfilePhoto = async (req, res, next) => {
+    try {
+      const currentProfile = await StudentModel.getProfile(req.user.id);
+      if (currentProfile?.avatar_url && currentProfile.avatar_url.includes('/uploads/avatars/')) {
+        const oldFile = currentProfile.avatar_url.split('/uploads/avatars/')[1];
+        if (oldFile) {
+          const oldPath = path.join(process.cwd(), 'backend/public/uploads/avatars', oldFile);
+          if (fs.existsSync(oldPath)) {
+            try { fs.unlinkSync(oldPath); } catch (e) {}
+          }
+        }
+      }
+
+      await StudentModel.updateAvatarUrl(req.user.id, null);
+
+      res.status(HTTP_STATUS.OK).json({
+        status: 'success',
+        message: 'Profile photo removed successfully.',
+        avatar_url: null
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // Resume Photo Management
+  uploadResumePhoto = async (req, res, next) => {
+    try {
+      const resumeId = req.params.id;
+      const { photo } = req.body;
+      if (!photo || typeof photo !== 'string') {
+        return next(new AppError('Please provide an image payload.', HTTP_STATUS.BAD_REQUEST));
+      }
+
+      const matches = photo.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+      if (!matches || matches.length !== 3) {
+        return next(new AppError('Invalid image format.', HTTP_STATUS.BAD_REQUEST));
+      }
+
+      const mimeType = matches[1].toLowerCase();
+      const base64Data = matches[2];
+      const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!allowedMimes.includes(mimeType)) {
+        return next(new AppError('Only JPG, PNG, and WebP images are allowed.', HTTP_STATUS.BAD_REQUEST));
+      }
+
+      const buffer = Buffer.from(base64Data, 'base64');
+      if (buffer.length > 5 * 1024 * 1024) {
+        return next(new AppError('Image exceeds 5MB size limit.', HTTP_STATUS.BAD_REQUEST));
+      }
+
+      const resume = await JobModel.getResumeById(req.user.id, resumeId);
+      if (!resume) {
+        return next(new AppError('Resume not found.', HTTP_STATUS.NOT_FOUND));
+      }
+
+      const ext = mimeType.includes('png') ? 'png' : (mimeType.includes('webp') ? 'webp' : 'jpg');
+      const filename = `resume_${resumeId}_${Date.now()}.${ext}`;
+      const uploadDir = path.join(process.cwd(), 'backend/public/uploads/resumes');
+      fs.mkdirSync(uploadDir, { recursive: true });
+
+      // Clean up previous custom resume photo
+      if (resume.resume_photo_url && resume.resume_photo_url.includes('/uploads/resumes/')) {
+        const oldFile = resume.resume_photo_url.split('/uploads/resumes/')[1];
+        if (oldFile) {
+          const oldPath = path.join(uploadDir, oldFile);
+          if (fs.existsSync(oldPath)) {
+            try { fs.unlinkSync(oldPath); } catch (e) {}
+          }
+        }
+      }
+
+      const filePath = path.join(uploadDir, filename);
+      fs.writeFileSync(filePath, buffer);
+
+      const photoUrl = `http://localhost:5000/uploads/resumes/${filename}`;
+      let rData = typeof resume.resume_data === 'string' ? JSON.parse(resume.resume_data) : (resume.resume_data || {});
+      rData.resume_photo_url = photoUrl;
+      rData.resume_photo_source = 'custom';
+      rData.include_profile_picture = true;
+
+      await JobModel.updateResumePhotoSettings(req.user.id, resumeId, {
+        resume_photo_url: photoUrl,
+        resume_photo_source: 'custom',
+        include_photo: true,
+        resume_data: rData
+      });
+
+      res.status(HTTP_STATUS.OK).json({
+        status: 'success',
+        message: 'Resume photo uploaded successfully.',
+        resume_photo_url: photoUrl,
+        resume_photo_source: 'custom',
+        include_photo: true
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  updateResumePhotoSettings = async (req, res, next) => {
+    try {
+      const resumeId = req.params.id;
+      const { photo_source, include_photo, remove_custom_photo } = req.body;
+      const resume = await JobModel.getResumeById(req.user.id, resumeId);
+      if (!resume) {
+        return next(new AppError('Resume not found.', HTTP_STATUS.NOT_FOUND));
+      }
+
+      let rData = typeof resume.resume_data === 'string' ? JSON.parse(resume.resume_data) : (resume.resume_data || {});
+      let currentPhotoUrl = resume.resume_photo_url;
+
+      if (remove_custom_photo) {
+        if (currentPhotoUrl && currentPhotoUrl.includes('/uploads/resumes/')) {
+          const oldFile = currentPhotoUrl.split('/uploads/resumes/')[1];
+          if (oldFile) {
+            const oldPath = path.join(process.cwd(), 'backend/public/uploads/resumes', oldFile);
+            if (fs.existsSync(oldPath)) {
+              try { fs.unlinkSync(oldPath); } catch (e) {}
+            }
+          }
+        }
+        currentPhotoUrl = null;
+        rData.resume_photo_url = null;
+      }
+
+      const finalSource = photo_source || (remove_custom_photo ? 'profile' : resume.resume_photo_source || 'profile');
+      const finalInclude = include_photo !== undefined ? Boolean(include_photo) : Boolean(resume.include_photo);
+
+      rData.resume_photo_source = finalSource;
+      rData.include_profile_picture = finalInclude;
+
+      await JobModel.updateResumePhotoSettings(req.user.id, resumeId, {
+        resume_photo_url: currentPhotoUrl,
+        resume_photo_source: finalSource,
+        include_photo: finalInclude,
+        resume_data: rData
+      });
+
+      res.status(HTTP_STATUS.OK).json({
+        status: 'success',
+        message: 'Resume photo preferences updated.',
+        resume_photo_url: currentPhotoUrl,
+        resume_photo_source: finalSource,
+        include_photo: finalInclude
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  removeResumePhoto = async (req, res, next) => {
+    try {
+      const resumeId = req.params.id;
+      const resume = await JobModel.getResumeById(req.user.id, resumeId);
+      if (!resume) {
+        return next(new AppError('Resume not found.', HTTP_STATUS.NOT_FOUND));
+      }
+
+      if (resume.resume_photo_url && resume.resume_photo_url.includes('/uploads/resumes/')) {
+        const oldFile = resume.resume_photo_url.split('/uploads/resumes/')[1];
+        if (oldFile) {
+          const oldPath = path.join(process.cwd(), 'backend/public/uploads/resumes', oldFile);
+          if (fs.existsSync(oldPath)) {
+            try { fs.unlinkSync(oldPath); } catch (e) {}
+          }
+        }
+      }
+
+      let rData = typeof resume.resume_data === 'string' ? JSON.parse(resume.resume_data) : (resume.resume_data || {});
+      rData.resume_photo_url = null;
+      rData.resume_photo_source = 'profile';
+
+      await JobModel.updateResumePhotoSettings(req.user.id, resumeId, {
+        resume_photo_url: null,
+        resume_photo_source: 'profile',
+        include_photo: resume.include_photo,
+        resume_data: rData
+      });
+
+      res.status(HTTP_STATUS.OK).json({
+        status: 'success',
+        message: 'Resume photo removed.',
+        resume_photo_url: null,
+        resume_photo_source: 'profile'
       });
     } catch (error) {
       next(error);
@@ -274,11 +526,38 @@ class StudentController {
     }
   };
 
-  // Roadmap
+  // Career Roles Directory
+  getCareerRoles = async (req, res, next) => {
+    try {
+      res.status(HTTP_STATUS.OK).json({ status: 'success', roles: CAREER_ROLES });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // Roadmap & Career Goals
   getRoadmap = async (req, res, next) => {
     try {
-      const roadmap = await StudentModel.getRoadmap(req.user.id);
-      res.status(HTTP_STATUS.OK).json({ status: 'success', roadmap });
+      let roadmap = await StudentModel.getRoadmap(req.user.id);
+      if (!roadmap) {
+        const profile = await StudentModel.getProfile(req.user.id);
+        const generated = RecommendationService.generatePersonalizedRoadmap(profile, 'Full Stack Software Engineer');
+        await StudentModel.saveRoadmap(req.user.id, generated);
+        roadmap = await StudentModel.getRoadmap(req.user.id);
+      }
+      
+      let parsedData = roadmap?.roadmap_data;
+      if (typeof parsedData === 'string') {
+        try { parsedData = JSON.parse(parsedData); } catch (e) { parsedData = {}; }
+      }
+      
+      res.status(HTTP_STATUS.OK).json({
+        status: 'success',
+        roadmap: {
+          ...roadmap,
+          roadmap_data: parsedData
+        }
+      });
     } catch (error) {
       next(error);
     }
@@ -286,8 +565,138 @@ class StudentController {
 
   saveRoadmap = async (req, res, next) => {
     try {
-      await StudentModel.saveRoadmap(req.user.id, req.body);
+      const { career_goal, progress_percent, roadmap_data } = req.body;
+      await StudentModel.saveRoadmap(req.user.id, { career_goal, progress_percent, roadmap_data });
       res.status(HTTP_STATUS.OK).json({ status: 'success', message: 'Career goal roadmap updated.' });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  generateRoadmap = async (req, res, next) => {
+    try {
+      const { career_goal } = req.body;
+      const profile = await StudentModel.getProfile(req.user.id);
+      const existingRoadmap = await StudentModel.getRoadmap(req.user.id);
+      
+      let parsedExisting = existingRoadmap?.roadmap_data;
+      if (typeof parsedExisting === 'string') {
+        try { parsedExisting = JSON.parse(parsedExisting); } catch (e) {}
+      }
+      
+      const newRoadmap = RecommendationService.generatePersonalizedRoadmap(
+        profile,
+        career_goal || 'Full Stack Software Engineer',
+        existingRoadmap ? { ...existingRoadmap, roadmap_data: parsedExisting } : null
+      );
+      
+      await StudentModel.saveRoadmap(req.user.id, newRoadmap);
+      const saved = await StudentModel.getRoadmap(req.user.id);
+      
+      let finalData = saved?.roadmap_data;
+      if (typeof finalData === 'string') {
+        try { finalData = JSON.parse(finalData); } catch (e) {}
+      }
+
+      res.status(HTTP_STATUS.OK).json({
+        status: 'success',
+        message: 'Personalized career roadmap generated.',
+        roadmap: {
+          ...saved,
+          roadmap_data: finalData
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  toggleMilestone = async (req, res, next) => {
+    try {
+      const { milestoneId, completed } = req.body;
+      const roadmap = await StudentModel.getRoadmap(req.user.id);
+      if (!roadmap) {
+        return next(new AppError('Roadmap not found.', HTTP_STATUS.NOT_FOUND));
+      }
+
+      let rData = roadmap.roadmap_data;
+      if (typeof rData === 'string') {
+        try { rData = JSON.parse(rData); } catch (e) { rData = {}; }
+      }
+
+      let milestones = Array.isArray(rData) ? rData : rData.milestones || [];
+      milestones = milestones.map(m => {
+        if (m.id === milestoneId) {
+          return { ...m, completed: completed !== undefined ? completed : !m.completed };
+        }
+        return m;
+      });
+
+      const completedCount = milestones.filter(m => m.completed).length;
+      const progress = Math.round((completedCount / (milestones.length || 1)) * 100);
+
+      const updatedRoadmapData = Array.isArray(rData) 
+        ? milestones 
+        : { ...rData, milestones };
+
+      await StudentModel.saveRoadmap(req.user.id, {
+        career_goal: roadmap.career_goal,
+        progress_percent: progress,
+        roadmap_data: updatedRoadmapData
+      });
+
+      const saved = await StudentModel.getRoadmap(req.user.id);
+      let parsed = saved?.roadmap_data;
+      if (typeof parsed === 'string') {
+        try { parsed = JSON.parse(parsed); } catch (e) {}
+      }
+
+      res.status(HTTP_STATUS.OK).json({
+        status: 'success',
+        message: 'Milestone updated.',
+        roadmap: {
+          ...saved,
+          roadmap_data: parsed
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  toggleInterviewChecklist = async (req, res, next) => {
+    try {
+      const { itemId, completed } = req.body;
+      const roadmap = await StudentModel.getRoadmap(req.user.id);
+      if (!roadmap) {
+        return next(new AppError('Roadmap not found.', HTTP_STATUS.NOT_FOUND));
+      }
+
+      let rData = roadmap.roadmap_data;
+      if (typeof rData === 'string') {
+        try { rData = JSON.parse(rData); } catch (e) { rData = {}; }
+      }
+
+      let checklist = rData.interviewChecklist || [];
+      checklist = checklist.map(item => {
+        if (item.id === itemId) {
+          return { ...item, completed: completed !== undefined ? completed : !item.completed };
+        }
+        return item;
+      });
+
+      const updatedRoadmapData = { ...rData, interviewChecklist: checklist };
+      await StudentModel.saveRoadmap(req.user.id, {
+        career_goal: roadmap.career_goal,
+        progress_percent: roadmap.progress_percent,
+        roadmap_data: updatedRoadmapData
+      });
+
+      res.status(HTTP_STATUS.OK).json({
+        status: 'success',
+        message: 'Interview checklist item updated.',
+        interviewChecklist: checklist
+      });
     } catch (error) {
       next(error);
     }
@@ -307,25 +716,23 @@ class StudentController {
   getAIMentorAdvice = async (req, res, next) => {
     try {
       const profile = await StudentModel.getProfile(req.user.id);
-      const skills = profile?.skills?.map(s => s.name) || [];
-      const goal = (await StudentModel.getRoadmap(req.user.id))?.career_goal || 'Full Stack Engineer';
+      let roadmap = await StudentModel.getRoadmap(req.user.id);
+      if (!roadmap) {
+        const generated = RecommendationService.generatePersonalizedRoadmap(profile, 'Full Stack Software Engineer');
+        await StudentModel.saveRoadmap(req.user.id, generated);
+        roadmap = await StudentModel.getRoadmap(req.user.id);
+      }
 
-      const advice = {
-        suggestions: [
-          `Focus on building deep knowledge in backend system designs if your target goal is ${goal}.`,
-          `Consider working on intermediate to advanced cloud infrastructure (like AWS or Docker) next.`
-        ],
-        skillGap: skills.includes('React') ? ['Docker', 'AWS', 'Redis'] : ['React', 'JavaScript', 'System Architecture'],
-        learningPath: [
-          { step: 'Core Concepts Mastery', duration: '2 weeks', resources: 'FreeCodeCamp / Official Docs' },
-          { step: 'System Integration Project', duration: '3 weeks', resources: 'Build a Dockerized NodeJS/React application' },
-          { step: 'Cloud Deployment', duration: '1 week', resources: 'Deploy on AWS free tier EC2' }
-        ],
-        interviewTips: [
-          'Prepare solid explanations about SQL indexes and database tuning techniques.',
-          'Review JavaScript microtask queues and asynchronous execution loops before coding tests.'
-        ]
-      };
+      let parsedRoadmap = roadmap?.roadmap_data;
+      if (typeof parsedRoadmap === 'string') {
+        try { parsedRoadmap = JSON.parse(parsedRoadmap); } catch (e) {}
+      }
+
+      const advice = RecommendationService.generateMentorAdvice(
+        profile,
+        roadmap?.career_goal || 'Full Stack Software Engineer',
+        { ...roadmap, roadmap_data: parsedRoadmap }
+      );
 
       res.status(HTTP_STATUS.OK).json({ status: 'success', advice });
     } catch (error) {

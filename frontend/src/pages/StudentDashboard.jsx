@@ -107,9 +107,6 @@ const StudentDashboard = () => {
     return { name: `Rev ${idx + 1}`, score: val };
   });
 
-  const latestApplication = stats?.recentApplications?.length > 0 ? stats.recentApplications[0] : null;
-  const upcomingAssessment = stats?.widgets?.upcomingAssessments?.length > 0 ? stats.widgets.upcomingAssessments[0] : null;
-
   return (
     <StudentLayout>
       <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
@@ -227,65 +224,6 @@ const StudentDashboard = () => {
             </div>
           </Card>
         )}
-
-        {/* Quick Actions Panel */}
-        <Card style={{ padding: '24px' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '16px' }}>Quick Actions</h3>
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-            <Button variant="outline" onClick={() => navigate('/student/resumes')} style={{ fontSize: '0.85rem' }}>📝 Build Resume</Button>
-            <Button variant="outline" onClick={() => navigate('/student/jobs')} style={{ fontSize: '0.85rem' }}>🔍 Search Jobs</Button>
-            <Button variant="outline" onClick={() => navigate('/student/assessments')} style={{ fontSize: '0.85rem' }}>📝 Take Assessment</Button>
-            <Button variant="outline" onClick={() => navigate('/student/profile')} style={{ fontSize: '0.85rem' }}>👤 Update Profile</Button>
-            <Button variant="primary" onClick={() => navigate('/student/ai-resume-review')} style={{ fontSize: '0.85rem' }}>🤖 AI Resume Review</Button>
-          </div>
-        </Card>
-
-        {/* Highlight Section: Next Assessment, Latest App, Resume Score */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
-          <Card style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '8px', borderLeft: '4px solid var(--primary)' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-light)', fontWeight: 700, textTransform: 'uppercase' }}>Next Assessment</span>
-            {upcomingAssessment ? (
-              <>
-                <h4 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0 }}>{upcomingAssessment.title}</h4>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '4px 0 16px 0' }}>Deadline: {upcomingAssessment.deadline}</p>
-                <Link to="/student/assessments" style={{ marginTop: 'auto' }}>
-                  <Button variant="primary" style={{ padding: '8px 16px', fontSize: '0.8rem' }}>Take Test</Button>
-                </Link>
-              </>
-            ) : (
-              <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>No pending assessments.</p>
-            )}
-          </Card>
-
-          <Card style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '8px', borderLeft: '4px solid var(--success)' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-light)', fontWeight: 700, textTransform: 'uppercase' }}>Latest Application</span>
-            {latestApplication ? (
-              <>
-                <h4 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0 }}>{latestApplication.title}</h4>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '4px 0 16px 0' }}>
-                  Status:{' '}
-                  <span style={{ fontWeight: 'bold', textTransform: 'capitalize' }}>
-                    {latestApplication.application_status.replace('_', ' ')}
-                  </span>
-                </p>
-                <Link to="/student/applications" style={{ marginTop: 'auto' }}>
-                  <Button variant="outline" style={{ padding: '8px 16px', fontSize: '0.8rem' }}>View Timeline</Button>
-                </Link>
-              </>
-            ) : (
-              <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>No submitted applications.</p>
-            )}
-          </Card>
-
-          <Card style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '8px', borderLeft: '4px solid var(--secondary)' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-light)', fontWeight: 700, textTransform: 'uppercase' }}>ATS Compatibility</span>
-            <h4 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--secondary)', margin: '4px 0 8px 0' }}>{stats?.atsScore || 0}%</h4>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>Overall compatibility rating matching default resumes.</p>
-            <Link to="/student/ai-resume-review" style={{ marginTop: 'auto' }}>
-              <Button variant="outline" style={{ padding: '8px 16px', fontSize: '0.8rem' }}>Scan Another Resume</Button>
-            </Link>
-          </Card>
-        </div>
 
         {/* Statistics 8-Grid telemetry */}
         <div>

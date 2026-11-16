@@ -13,12 +13,10 @@ import '../styles/pages.css';
 const COLORS = ['#4F46E5', '#7C3AED', '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#06B6D4'];
 
 const StatCard = ({ icon, label, value, color }) => (
-  <Card style={{ padding: '20px', textAlign: 'center' }}>
-    <span style={{ fontSize: '1.6rem', display: 'block', marginBottom: '4px' }}>{icon}</span>
-    <span style={{ fontSize: '0.75rem', color: 'var(--text-light)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-      {label}
-    </span>
-    <strong style={{ fontSize: '1.6rem', display: 'block', marginTop: '4px', color: color || 'var(--primary)' }}>
+  <Card className="kpi-card">
+    <span className="kpi-card-icon">{icon}</span>
+    <span className="kpi-card-label">{label}</span>
+    <strong className="kpi-card-value" style={{ color: color || 'var(--primary)' }}>
       {value ?? '—'}
     </strong>
   </Card>
@@ -86,9 +84,6 @@ const AdminDashboard = () => {
                 {counts.placementPercent ?? 0}%
               </strong>
             </Card>
-            <Button variant="outline" onClick={fetchStats} style={{ padding: '10px 18px', fontSize: '0.85rem' }}>
-              🔄 Refresh
-            </Button>
           </div>
         </div>
 
@@ -100,8 +95,8 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* Telemetry Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '20px' }}>
+        {/* Telemetry KPI Grid - Exactly 4 Columns x 2 Rows */}
+        <div className="dashboard-kpi-grid">
           <StatCard icon="🎓" label="Total Students"   value={counts.totalStudents}  color="var(--primary)" />
           <StatCard icon="🏢" label="Total Recruiters" value={counts.totalRecruiters} color="var(--secondary)" />
           <StatCard icon="💼" label="Active Jobs"       value={counts.activeJobs}      color="#10B981" />
@@ -112,18 +107,26 @@ const AdminDashboard = () => {
           <StatCard icon="🤝" label="Offers Accepted"   value={counts.offersAccepted}  color="#10B981" />
         </div>
 
-        {/* Charts Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '32px' }}>
+        {/* Analytics Section */}
+        <div>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '16px' }}>
+            📊 Placement & Pipeline Analytics
+          </h3>
+          <div className="dashboard-charts">
 
-          {/* Monthly Applications Area Chart */}
-          <Card style={{ padding: '28px' }}>
-            <h4 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '20px' }}>Applications Trend (Monthly)</h4>
+          {/* 1. Monthly Applications Area Chart */}
+          <Card className="chart-card">
+            <div className="chart-card-header">
+              <h4 className="chart-card-title">Applications Trend (Monthly)</h4>
+            </div>
             {(charts.applicationsPerMonth || []).length === 0 ? (
-              <div style={{ height: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>No application data yet</div>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                No application data yet
+              </div>
             ) : (
-              <div style={{ width: '100%', height: 250 }}>
+              <div className="chart-card-body">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={charts.applicationsPerMonth} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <AreaChart data={charts.applicationsPerMonth} margin={{ top: 8, right: 8, left: -22, bottom: 0 }}>
                     <defs>
                       <linearGradient id="colorAdminApps" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.2}/>
@@ -131,8 +134,8 @@ const AdminDashboard = () => {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" vertical={false} />
-                    <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={11} tickLine={false} />
-                    <YAxis stroke="var(--text-muted)" fontSize={11} tickLine={false} />
+                    <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={10} tickLine={false} />
+                    <YAxis stroke="var(--text-muted)" fontSize={10} tickLine={false} />
                     <Tooltip />
                     <Area type="monotone" dataKey="value" stroke="var(--primary)" strokeWidth={2.5} fillOpacity={1} fill="url(#colorAdminApps)" />
                   </AreaChart>
@@ -141,17 +144,21 @@ const AdminDashboard = () => {
             )}
           </Card>
 
-          {/* Salary Package Bar Chart */}
-          <Card style={{ padding: '28px' }}>
-            <h4 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '20px' }}>Salary Packages Offered (LPA)</h4>
+          {/* 2. Salary Package Bar Chart */}
+          <Card className="chart-card">
+            <div className="chart-card-header">
+              <h4 className="chart-card-title">Salary Packages (LPA)</h4>
+            </div>
             {salaryData.every(d => d.value === 0) ? (
-              <div style={{ height: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>No placement offers accepted yet</div>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                No placement offers accepted yet
+              </div>
             ) : (
-              <div style={{ width: '100%', height: 250 }}>
+              <div className="chart-card-body">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={salaryData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                    <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={11} tickLine={false} />
-                    <YAxis stroke="var(--text-muted)" fontSize={11} tickLine={false} />
+                  <BarChart data={salaryData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+                    <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={10} tickLine={false} />
+                    <YAxis stroke="var(--text-muted)" fontSize={10} tickLine={false} />
                     <Tooltip formatter={(value) => `${value} LPA`} />
                     <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                       <Cell fill="var(--secondary)" />
@@ -163,66 +170,78 @@ const AdminDashboard = () => {
             )}
           </Card>
 
-          {/* Company-wise Placements Pie */}
-          <Card style={{ padding: '28px' }}>
-            <h4 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '20px' }}>Company-wise Placements</h4>
+          {/* 3. Company-wise Placements Pie */}
+          <Card className="chart-card">
+            <div className="chart-card-header">
+              <h4 className="chart-card-title">Company Placements</h4>
+            </div>
             {(charts.companyPlacements || []).length === 0 ? (
-              <div style={{ height: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>No accepted offers yet</div>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                No accepted offers yet
+              </div>
             ) : (
-              <div style={{ width: '100%', height: 250 }}>
+              <div className="chart-card-body">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={charts.companyPlacements} cx="50%" cy="50%" innerRadius={55} outerRadius={80} paddingAngle={4} dataKey="value">
+                    <Pie data={charts.companyPlacements} cx="50%" cy="42%" innerRadius={35} outerRadius={55} paddingAngle={3} dataKey="value">
                       {charts.companyPlacements.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                     </Pie>
                     <Tooltip />
-                    <Legend />
+                    <Legend wrapperStyle={{ fontSize: '10px' }} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
             )}
           </Card>
 
-          {/* Department-wise Placements Pie */}
-          <Card style={{ padding: '28px' }}>
-            <h4 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '20px' }}>Department-wise Placements</h4>
+          {/* 4. Department-wise Placements Pie */}
+          <Card className="chart-card">
+            <div className="chart-card-header">
+              <h4 className="chart-card-title">Department Placements</h4>
+            </div>
             {(charts.departmentPlacements || []).length === 0 ? (
-              <div style={{ height: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>No department data available yet</div>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                No department data available yet
+              </div>
             ) : (
-              <div style={{ width: '100%', height: 250 }}>
+              <div className="chart-card-body">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={charts.departmentPlacements} cx="50%" cy="50%" innerRadius={55} outerRadius={80} paddingAngle={4} dataKey="value">
+                    <Pie data={charts.departmentPlacements} cx="50%" cy="42%" innerRadius={35} outerRadius={55} paddingAngle={3} dataKey="value">
                       {charts.departmentPlacements.map((_, i) => <Cell key={i} fill={COLORS[(i + 2) % COLORS.length]} />)}
                     </Pie>
                     <Tooltip />
-                    <Legend />
+                    <Legend wrapperStyle={{ fontSize: '10px' }} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
             )}
           </Card>
 
-          {/* Offer Acceptance Rate Donut */}
-          <Card style={{ padding: '28px' }}>
-            <h4 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '20px' }}>
-              Offer Acceptance Rate
-              <span style={{ marginLeft: '12px', fontSize: '1rem', color: '#10B981', fontWeight: 800 }}>
-                {charts.offerAcceptRate ?? 0}%
-              </span>
-            </h4>
+          {/* 5. Offer Acceptance Rate Donut - Centered on 2nd Row */}
+          <Card className="chart-card chart-card-centered">
+            <div className="chart-card-header">
+              <h4 className="chart-card-title">
+                Acceptance Rate
+                <span style={{ marginLeft: '8px', fontSize: '0.9rem', color: '#10B981', fontWeight: 800 }}>
+                  {charts.offerAcceptRate ?? 0}%
+                </span>
+              </h4>
+            </div>
             {offerDonut.every(d => d.value === 0) ? (
-              <div style={{ height: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>No offers issued yet</div>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                No offers issued yet
+              </div>
             ) : (
-              <div style={{ width: '100%', height: 250 }}>
+              <div className="chart-card-body">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={offerDonut} cx="50%" cy="50%" innerRadius={60} outerRadius={85} paddingAngle={3} dataKey="value">
+                    <Pie data={offerDonut} cx="50%" cy="42%" innerRadius={38} outerRadius={58} paddingAngle={3} dataKey="value">
                       <Cell fill="#10B981" />
                       <Cell fill="rgba(245, 158, 11, 0.5)" />
                     </Pie>
                     <Tooltip />
-                    <Legend />
+                    <Legend wrapperStyle={{ fontSize: '10px' }} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -230,6 +249,7 @@ const AdminDashboard = () => {
           </Card>
 
         </div>
+      </div>
       </div>
     </AdminLayout>
   );

@@ -49,6 +49,7 @@ router.post('/register/student', validateStudentRegister, authController.registe
 router.post('/register/employer', validateEmployerRegister, authController.registerEmployer);
 router.post('/verify-email', validateVerifyEmail, authController.verifyEmail);
 router.post('/login', validateLogin, authController.login);
+router.post('/google', authController.googleLogin);
 router.post('/refresh-token', authController.refreshToken);
 router.post('/logout', protect, authController.logout);
 router.post('/forgot-password', validateForgotPassword, authController.forgotPassword);

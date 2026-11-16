@@ -69,6 +69,10 @@ class StudentModel {
     };
   }
 
+  async updateAvatarUrl(studentId, avatarUrl) {
+    await pool.execute('UPDATE students SET avatar_url = ? WHERE id = ?', [avatarUrl, studentId]);
+  }
+
   async updateProfile(studentId, data) {
     await pool.execute(
       `UPDATE students SET 
@@ -252,7 +256,7 @@ class StudentModel {
 
   // V2 Roadmap
   async getRoadmap(studentId) {
-    const [rows] = await pool.execute('SELECT * FROM career_roadmaps WHERE student_id = ? LIMIT 1', [studentId]);
+    const [rows] = await pool.execute('SELECT * FROM career_roadmaps WHERE student_id = ? ORDER BY updated_at DESC, id DESC LIMIT 1', [studentId]);
     return rows[0] || null;
   }
 

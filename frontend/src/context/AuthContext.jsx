@@ -29,22 +29,33 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = async (email, password) => {
-    setLoading(true);
     try {
-      const response = await apiClient.post('/auth/login', { email, password });
+      const sanitizedEmail = typeof email === 'string' ? email.trim() : email;
+      const response = await apiClient.post('/auth/login', { email: sanitizedEmail, password });
       const { token, user: loggedUser } = response.data;
       localStorage.setItem('accessToken', token);
       setUser(loggedUser);
       return loggedUser;
     } catch (error) {
-      throw error.response?.data?.message || 'Login failed. Please check credentials.';
-    } finally {
-      setLoading(false);
+      const message = error.response?.data?.message || error.message || 'Login failed. Please check credentials.';
+      throw message;
+    }
+  };
+
+  const googleLogin = async (googlePayload) => {
+    try {
+      const response = await apiClient.post('/auth/google', googlePayload);
+      const { token, user: loggedUser } = response.data;
+      localStorage.setItem('accessToken', token);
+      setUser(loggedUser);
+      return loggedUser;
+    } catch (error) {
+      const message = error.response?.data?.message || error.message || 'Google sign-in failed.';
+      throw message;
     }
   };
 
   const logout = async () => {
-    setLoading(true);
     try {
       await apiClient.post('/auth/logout');
     } catch (error) {
@@ -52,7 +63,6 @@ export const AuthProvider = ({ children }) => {
     } finally {
       localStorage.removeItem('accessToken');
       setUser(null);
-      setLoading(false);
     }
   };
 
@@ -107,6 +117,7 @@ export const AuthProvider = ({ children }) => {
         user,
         loading,
         login,
+        googleLogin,
         logout,
         registerStudent,
         registerEmployer,

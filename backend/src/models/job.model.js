@@ -110,17 +110,71 @@ class JobModel {
   }
 
   async createResume(studentId, data) {
+    const rData = data.resume_data || {};
+    const photoUrl = data.resume_photo_url !== undefined ? data.resume_photo_url : (rData.resume_photo_url || null);
+    const photoSource = data.resume_photo_source !== undefined ? data.resume_photo_source : (rData.resume_photo_source || 'profile');
+    const incPhoto = data.include_photo !== undefined ? data.include_photo : (rData.include_profile_picture !== undefined ? rData.include_profile_picture : 1);
+
     const [result] = await pool.execute(
-      'INSERT INTO resumes (student_id, title, template_name, resume_data) VALUES (?, ?, ?, ?)',
-      [studentId, data.title || 'My Resume', data.template_name || 'classic', JSON.stringify(data.resume_data || {})]
+      `INSERT INTO resumes (student_id, title, template_name, resume_data, resume_photo_url, resume_photo_source, include_photo) 
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        studentId, 
+        data.title || 'My Resume', 
+        data.template_name || 'classic', 
+        JSON.stringify(rData),
+        photoUrl,
+        photoSource,
+        incPhoto ? 1 : 0
+      ]
     );
     return result.insertId;
   }
 
   async updateResume(studentId, resumeId, data) {
+    const rData = data.resume_data || {};
+    const photoUrl = data.resume_photo_url !== undefined ? data.resume_photo_url : (rData.resume_photo_url || null);
+    const photoSource = data.resume_photo_source !== undefined ? data.resume_photo_source : (rData.resume_photo_source || 'profile');
+    const incPhoto = data.include_photo !== undefined ? data.include_photo : (rData.include_profile_picture !== undefined ? rData.include_profile_picture : 1);
+
     await pool.execute(
-      'UPDATE resumes SET title = ?, template_name = ?, resume_data = ? WHERE id = ? AND student_id = ?',
-      [data.title, data.template_name, JSON.stringify(data.resume_data), resumeId, studentId]
+      `UPDATE resumes SET 
+        title = ?, 
+        template_name = ?, 
+        resume_data = ?,
+        resume_photo_url = ?,
+        resume_photo_source = ?,
+        include_photo = ?
+      WHERE id = ? AND student_id = ?`,
+      [
+        data.title, 
+        data.template_name, 
+        JSON.stringify(rData), 
+        photoUrl,
+        photoSource,
+        incPhoto ? 1 : 0,
+        resumeId, 
+        studentId
+      ]
+    );
+  }
+
+  async updateResumePhotoSettings(studentId, resumeId, { resume_photo_url, resume_photo_source, include_photo, resume_data }) {
+    await pool.execute(
+      `UPDATE resumes SET 
+        resume_photo_url = ?, 
+        resume_photo_source = ?, 
+        include_photo = ?, 
+        resume_data = ? 
+      WHERE id = ? AND student_id = ?`,
+      [
+        resume_photo_url || null,
+        resume_photo_source || 'profile',
+        include_photo ? 1 : 0,
+        JSON.stringify(resume_data || {}),
+        resumeId,
+        studentId
+      ]
     );
   }
 

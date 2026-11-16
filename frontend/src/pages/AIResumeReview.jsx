@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import StudentLayout from '../components/StudentLayout';
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -8,6 +9,7 @@ import apiClient from '../services/api.client';
 import '../styles/pages.css';
 
 const AIResumeReview = () => {
+  const navigate = useNavigate();
   const [resumes, setResumes] = useState([]);
   const [selectedResumeId, setSelectedResumeId] = useState('');
   const [review, setReview] = useState(null);
@@ -75,7 +77,12 @@ const AIResumeReview = () => {
         </div>
 
         <Card style={{ padding: '32px', marginBottom: '32px' }}>
-          <h3 style={{ fontSize: '1.2rem', marginBottom: '16px' }}>Select Resume Profile</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+            <h3 style={{ fontSize: '1.2rem', margin: 0 }}>Select Resume Profile</h3>
+            <Button variant="outline" onClick={() => navigate('/student/resumes')}>
+              Go to Resume Builder
+            </Button>
+          </div>
           {loadingList ? (
             <Spinner size="sm" />
           ) : resumes.length === 0 ? (
@@ -256,7 +263,10 @@ const AIResumeReview = () => {
             <Card style={{ padding: '36px', border: '1px solid rgba(79, 70, 229, 0.2)', backgroundColor: 'rgba(79, 70, 229, 0.01)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '16px' }}>
                 <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>One-Click AI Resume Optimizer</h3>
-                <Button variant="primary" onClick={handleOneClickImprove}>Apply Upgrade</Button>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <Button variant="outline" onClick={() => navigate('/student/resumes')}>Go to Resume Builder</Button>
+                  <Button variant="primary" onClick={handleOneClickImprove}>Apply Upgrade</Button>
+                </div>
               </div>
               <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
                 Recommended replacement statement to inject into your Summary:

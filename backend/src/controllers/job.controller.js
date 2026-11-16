@@ -1,5 +1,6 @@
 import JobModel from '../models/job.model.js';
 import StudentModel from '../models/student.model.js';
+import UserModel from '../models/user.model.js';
 import AppError from '../utils/AppError.js';
 import { HTTP_STATUS } from '../utils/constants.js';
 
@@ -126,12 +127,19 @@ class JobController {
       await JobModel.applyJob(req.user.id, jobId, resumeId, coverLetter);
       await StudentModel.createNotification(req.user.id, 'Application Submitted', `You successfully applied for the job listing: ${job.title}.`, 'jobs');
       if (job.employer_id) {
-        await StudentModel.createNotification(
-          job.employer_id,
-          'Application Received',
-          `A student has applied for the job listing: ${job.title}.`,
-          'jobs'
-        );
+        try {
+          const empUser = await UserModel.findById(job.employer_id);
+          if (empUser) {
+            await StudentModel.createNotification(
+              job.employer_id,
+              'Application Received',
+              `A student has applied for the job listing: ${job.title}.`,
+              'jobs'
+            );
+          }
+        } catch (notifErr) {
+          console.warn('Failed to send application notification to employer:', notifErr.message);
+        }
       }
 
       res.status(HTTP_STATUS.CREATED).json({

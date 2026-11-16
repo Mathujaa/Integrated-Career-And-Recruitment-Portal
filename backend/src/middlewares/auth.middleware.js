@@ -35,3 +35,26 @@ export const protect = async (req, res, next) => {
     next(error);
   }
 };
+
+export const optionalAuth = async (req, res, next) => {
+  try {
+    let token;
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+      token = req.headers.authorization.split(' ')[1];
+    }
+    if (!token) {
+      return next();
+    }
+    const decoded = tokenService.verifyAccessToken(token);
+    if (!decoded) {
+      return next();
+    }
+    const user = await userModel.findById(decoded.id);
+    if (user && user.status !== 'suspended') {
+      req.user = user;
+    }
+    next();
+  } catch (error) {
+    next();
+  }
+};

@@ -1,3 +1,4 @@
+import pool from '../config/db.config.js';
 import EmployerModel from '../models/employer.model.js';
 import StudentModel from '../models/student.model.js';
 import EmailService from '../services/email.service.js';
@@ -28,7 +29,7 @@ class EmployerController {
       const id = await EmployerModel.createJob(req.user.id, req.body);
       
       // Notify all students
-      const studentRows = await poolQuery('SELECT s.id, u.email, s.first_name FROM students s JOIN users u ON s.id = u.id');
+      const [studentRows] = await pool.query('SELECT s.id, u.email, s.first_name FROM students s JOIN users u ON s.id = u.id');
       for (const s of studentRows) {
         await StudentModel.createNotification(
           s.id,
@@ -36,8 +37,6 @@ class EmployerController {
           `A new job listing has been published: ${req.body.title}.`,
           'jobs'
         );
-        EmailService.sendApplicationReceived(s.email, { candidateName: s.first_name, jobTitle: req.body.title, companyName: 'Recruiter Partner' })
-          .catch(err => console.error('Job posted email failed:', err));
       }
 
       res.status(HTTP_STATUS.CREATED).json({ status: 'success', message: 'Job posting published.', id });
@@ -107,7 +106,7 @@ class EmployerController {
       await EmployerModel.updateApplicantStatus(req.params.id, status, feedback);
 
       // Get student's user ID from application to trigger notification
-      const appRows = await poolQuery(
+      const [appRows] = await pool.query(
         'SELECT student_id FROM applications WHERE id = ?',
         [req.params.id]
       );
@@ -169,7 +168,7 @@ class EmployerController {
       const id = await EmployerModel.createAssessment(req.user.id, req.body);
       
       // Notify all students of a new available assessment
-      const studentRows = await poolQuery('SELECT s.id, u.email FROM students s JOIN users u ON s.id = u.id');
+      const [studentRows] = await pool.query('SELECT s.id, u.email FROM students s JOIN users u ON s.id = u.id');
       for (const s of studentRows) {
         await StudentModel.createNotification(
           s.id, 
@@ -212,12 +211,12 @@ class EmployerController {
       await StudentModel.createNotification(
         req.body.student_id, 
         'Interview Scheduled', 
-        `recruiter scheduled an interview for you on ${req.body.date} at ${req.body.time}.`, 
+        `Recruiter scheduled an interview for you on ${req.body.date} at ${req.body.time}.`, 
         'interviews'
       );
 
       // Fetch student email and notify
-      const [userRows] = await poolQuery('SELECT email FROM users WHERE id = ?', [req.body.student_id]);
+      const [userRows] = await pool.query('SELECT email FROM users WHERE id = ?', [req.body.student_id]);
       if (userRows[0]?.email) {
         EmailService.sendInterviewScheduled(userRows[0].email, {
           date: req.body.date,
@@ -256,16 +255,16 @@ class EmployerController {
       await StudentModel.createNotification(
         req.body.student_id, 
         'Offer Letter Extended', 
-        `Congratulations! TechCorp extended an offer for the role: ${req.body.role}.`, 
+        `Congratulations! An offer was extended for the role: ${req.body.role}.`, 
         'system'
       );
 
       // Fetch student email and notify
-      const [userRows] = await poolQuery('SELECT email FROM users WHERE id = ?', [req.body.student_id]);
+      const [userRows] = await pool.query('SELECT email FROM users WHERE id = ?', [req.body.student_id]);
       if (userRows[0]?.email) {
         EmailService.sendOfferSent(userRows[0].email, {
           role: req.body.role,
-          companyName: 'TechCorp',
+          companyName: req.body.company_name || 'Recruiter Partner',
           salary: req.body.salary_offered || req.body.salary || 800000
         }).catch(err => console.error('Offer sent email failed:', err));
       }
@@ -275,12 +274,6 @@ class EmployerController {
       next(error);
     }
   };
-}
-
-// Private helper to query without importing pool everywhere
-async function poolQuery(sql, params) {
-  const [rows] = await import('../config/db.config.js').then(m => m.default.query(sql, params));
-  return rows;
 }
 
 export default new EmployerController();

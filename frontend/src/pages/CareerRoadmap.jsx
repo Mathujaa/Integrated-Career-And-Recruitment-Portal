@@ -9,6 +9,7 @@ import '../styles/pages.css';
 
 const CareerRoadmap = () => {
   const [roadmap, setRoadmap] = useState(null);
+  const [careerRoles, setCareerRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   
   // Selection States
@@ -19,45 +20,31 @@ const CareerRoadmap = () => {
   const [toastMsg, setToastMsg] = useState('');
   const [toastType, setToastType] = useState('success');
 
-  const defaultRoadmaps = {
-    'Full Stack Software Engineer': [
-      { id: 1, title: 'Frontend Core Fundamentals', desc: 'Master JavaScript (ES6+), semantic HTML5, and responsive vanilla CSS grid/flex layout designs.', completed: true },
-      { id: 2, title: 'React components architecture', desc: 'Learn component state management, hooks lifecycle, prop drilling solutions, and context APIs.', completed: true },
-      { id: 3, title: 'Server-Side endpoints coding', desc: 'Build scalable APIs using NodeJS, Express handlers, database connection pools, and authentication guards.', completed: false },
-      { id: 4, title: 'Database modeling & indexing', desc: 'Write relations schemas, join queries, and configure optimal indexes in MySQL/PostgreSQL.', completed: false },
-      { id: 5, title: 'Cloud Deployments & Git workflows', desc: 'Configure Docker builds, set up GitHub actions CI/CD, and deploy targets onto AWS EC2 clusters.', completed: false }
-    ],
-    'Frontend Developer': [
-      { id: 1, title: 'HTML & CSS Mastery', desc: 'Learn layout structures, typography rules, HSL color models, and CSS variables.', completed: true },
-      { id: 2, title: 'JavaScript Essentials', desc: 'Study async execution paths, API fetch callbacks, microtask queues, and DOM selectors.', completed: true },
-      { id: 3, title: 'React Hooks & State Management', desc: 'Integrate context stores, caching queries, and modular hook extensions.', completed: false },
-      { id: 4, title: 'CSS Preprocessors & Frameworks', desc: 'Incorporate Tailwind, Sass/Less styling variables, and modular CSS systems.', completed: false }
-    ],
-    'Backend Engineer': [
-      { id: 1, title: 'Data Structures & Algorithms', desc: 'Understand array indexing, linked structures, tree traversals, and algorithms runtimes.', completed: true },
-      { id: 2, title: 'Express NodeJS Servers', desc: 'Code route handlers, custom logger middleware, CORS configurations, and error catching.', completed: true },
-      { id: 3, title: 'Relational Database Queries', desc: 'Implement transactions locks, foreign constraints, and optimized joins in MySQL.', completed: false },
-      { id: 4, title: 'Caching & Message Brokers', desc: 'Incorporate Redis key structures, BullMQ worker processes, and RabbitMQ events.', completed: false }
-    ]
-  };
-
   useEffect(() => {
-    fetchRoadmap();
+    fetchInitialData();
   }, []);
 
-  const fetchRoadmap = async () => {
+  const fetchInitialData = async () => {
+    setLoading(true);
     try {
-      const response = await apiClient.get('/student/roadmap');
-      if (response.data.roadmap) {
-        const r = response.data.roadmap;
-        setRoadmap({
-          ...r,
-          roadmap_data: typeof r.roadmap_data === 'string' ? JSON.parse(r.roadmap_data) : r.roadmap_data
-        });
+      const [rolesRes, roadmapRes] = await Promise.all([
+        apiClient.get('/student/career-roles').catch(() => ({ data: { roles: [] } })),
+        apiClient.get('/student/roadmap')
+      ]);
+
+      if (rolesRes.data.roles && rolesRes.data.roles.length > 0) {
+        setCareerRoles(rolesRes.data.roles);
+      }
+
+      if (roadmapRes.data.roadmap) {
+        const r = roadmapRes.data.roadmap;
+        const parsedData = typeof r.roadmap_data === 'string' ? JSON.parse(r.roadmap_data) : r.roadmap_data;
+        setRoadmap({ ...r, roadmap_data: parsedData });
         setCareerGoal(r.career_goal);
       }
     } catch (err) {
-      console.error(err);
+      console.error('Failed to load career goal data:', err);
+      showToast('Failed to load career goals.', 'error');
     } finally {
       setLoading(false);
     }
@@ -68,21 +55,21 @@ const CareerRoadmap = () => {
     setToastType(type);
   };
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (targetGoal) => {
+    const selected = targetGoal || careerGoal;
     setGenerating(true);
-    const steps = defaultRoadmaps[careerGoal] || defaultRoadmaps['Full Stack Software Engineer'];
-    const payload = {
-      career_goal: careerGoal,
-      progress_percent: Math.round((steps.filter(s => s.completed).length / steps.length) * 100),
-      roadmap_data: steps
-    };
-
     try {
-      await apiClient.post('/student/roadmap', payload);
-      showToast('Career roadmap generated successfully!');
-      fetchRoadmap();
+      const res = await apiClient.post('/student/roadmap/generate', { career_goal: selected });
+      if (res.data.roadmap) {
+        const r = res.data.roadmap;
+        const parsed = typeof r.roadmap_data === 'string' ? JSON.parse(r.roadmap_data) : r.roadmap_data;
+        setRoadmap({ ...r, roadmap_data: parsed });
+        setCareerGoal(r.career_goal);
+      }
+      showToast('Personalized career roadmap generated based on your profile!');
     } catch (err) {
-      showToast('Failed to save roadmap details.', 'error');
+      console.error(err);
+      showToast('Failed to generate personalized roadmap.', 'error');
     } finally {
       setGenerating(false);
     }
@@ -90,26 +77,19 @@ const CareerRoadmap = () => {
 
   const handleToggleStep = async (stepId, isCurrentlyCompleted) => {
     if (!roadmap) return;
-    
-    const updatedSteps = roadmap.roadmap_data.map(step => {
-      if (step.id === stepId) {
-        return { ...step, completed: !isCurrentlyCompleted };
-      }
-      return step;
-    });
-
-    const progress = Math.round((updatedSteps.filter(s => s.completed).length / updatedSteps.length) * 100);
-    const payload = {
-      career_goal: roadmap.career_goal,
-      progress_percent: progress,
-      roadmap_data: updatedSteps
-    };
-
     try {
-      await apiClient.post('/student/roadmap', payload);
-      showToast('Milestone status updated.');
-      fetchRoadmap();
+      const res = await apiClient.post('/student/roadmap/milestone/toggle', {
+        milestoneId: stepId,
+        completed: !isCurrentlyCompleted
+      });
+      if (res.data.roadmap) {
+        const r = res.data.roadmap;
+        const parsed = typeof r.roadmap_data === 'string' ? JSON.parse(r.roadmap_data) : r.roadmap_data;
+        setRoadmap({ ...r, roadmap_data: parsed });
+      }
+      showToast(isCurrentlyCompleted ? 'Milestone marked as pending.' : 'Milestone marked as completed! 🎉');
     } catch (err) {
+      console.error(err);
       showToast('Failed to update milestone status.', 'error');
     }
   };
@@ -124,34 +104,40 @@ const CareerRoadmap = () => {
     );
   }
 
+  const rData = roadmap?.roadmap_data;
+  const milestones = Array.isArray(rData) ? rData : (rData?.milestones || []);
+  const gapAnalysis = rData?.gapAnalysis;
+
   return (
     <StudentLayout>
       <div className="fade-in">
         <div style={{ marginBottom: '32px' }}>
-          <h2 style={{ fontSize: '1.75rem', fontWeight: 800 }}>Career Goals & Roadmap</h2>
-          <p style={{ color: 'var(--text-muted)' }}>Generate customized study steps mapping your skills profile to specific career roles.</p>
+          <h2 style={{ fontSize: '1.75rem', fontWeight: 800 }}>Career Goals & Learning Roadmap</h2>
+          <p style={{ color: 'var(--text-muted)' }}>
+            Personalized study milestones dynamically mapped against your skills, projects, and target placement role.
+          </p>
         </div>
 
-        {!roadmap ? (
-          <Card style={{ padding: '40px', textAlign: 'center', maxWidth: '600px', margin: '0 auto' }}>
-            <span style={{ fontSize: '3rem', display: 'block', marginBottom: '16px' }}>🗺</span>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '8px' }}>Generate Career Roadmap</h3>
+        {!roadmap || milestones.length === 0 ? (
+          <Card style={{ padding: '40px', textAlign: 'center', maxWidth: '640px', margin: '0 auto' }}>
+            <span style={{ fontSize: '3.5rem', display: 'block', marginBottom: '16px' }}>🗺</span>
+            <h3 style={{ fontSize: '1.35rem', fontWeight: 700, marginBottom: '8px' }}>Select Your Target Career Goal</h3>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginBottom: '24px', lineHeight: 1.6 }}>
-              Select your placement target. Our assistant will compute required milestones and list study guidelines.
+              Choose the role you want to be placed in. Our system analyzes your current skills and projects to build a custom roadmap.
             </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '360px', margin: '0 auto' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '400px', margin: '0 auto' }}>
               <select
                 className="input-field"
                 value={careerGoal}
                 onChange={(e) => setCareerGoal(e.target.value)}
                 style={{ appearance: 'auto' }}
               >
-                <option value="Full Stack Software Engineer">Full Stack Software Engineer</option>
-                <option value="Frontend Developer">Frontend Developer</option>
-                <option value="Backend Engineer">Backend Engineer</option>
+                {careerRoles.map((role, idx) => (
+                  <option key={idx} value={role.name}>{role.name}</option>
+                ))}
               </select>
-              <Button variant="primary" onClick={handleGenerate} loading={generating}>
-                Generate Active Roadmap
+              <Button variant="primary" onClick={() => handleGenerate(careerGoal)} loading={generating}>
+                Generate Personalized Roadmap
               </Button>
             </div>
           </Card>
@@ -160,67 +146,193 @@ const CareerRoadmap = () => {
             
             {/* Timeline Column */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              <Card style={{ padding: '36px' }}>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '24px' }}>Learning Milestones</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                  {roadmap.roadmap_data.map((step, idx) => (
-                    <div key={idx} style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+              
+              {/* Skill Gap Analysis Banner */}
+              {gapAnalysis && (
+                <Card style={{ padding: '24px', backgroundColor: 'var(--bg-card)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+                    <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0 }}>Target Role Skill Assessment</h3>
+                    <span style={{
+                      backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                      color: 'var(--primary)',
+                      padding: '4px 10px',
+                      borderRadius: 'var(--radius-full)',
+                      fontSize: '0.8rem',
+                      fontWeight: 700
+                    }}>
+                      {gapAnalysis.acquiredSkills?.length || 0} / {(gapAnalysis.acquiredSkills?.length || 0) + (gapAnalysis.missingSkills?.length || 0)} Skills Verified
+                    </span>
+                  </div>
+
+                  {gapAnalysis.acquiredSkills && gapAnalysis.acquiredSkills.length > 0 && (
+                    <div style={{ marginBottom: '16px' }}>
+                      <p style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--success)', marginBottom: '8px' }}>
+                        ✔ Skills You Already Possess:
+                      </p>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        {gapAnalysis.acquiredSkills.map((s, idx) => (
+                          <span key={idx} style={{
+                            backgroundColor: 'rgba(16, 185, 129, 0.08)',
+                            color: 'var(--success)',
+                            padding: '4px 10px',
+                            borderRadius: 'var(--radius-sm)',
+                            fontSize: '0.8rem',
+                            fontWeight: 600
+                          }}>
+                            {s}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {gapAnalysis.missingSkills && gapAnalysis.missingSkills.length > 0 && (
+                    <div>
+                      <p style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--error)', marginBottom: '8px' }}>
+                        ⚡ Missing Skills to Acquire for {roadmap.career_goal}:
+                      </p>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        {gapAnalysis.missingSkills.map((s, idx) => (
+                          <span key={idx} style={{
+                            backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                            color: 'var(--error)',
+                            padding: '4px 10px',
+                            borderRadius: 'var(--radius-sm)',
+                            fontSize: '0.8rem',
+                            fontWeight: 600
+                          }}>
+                            + {s}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </Card>
+              )}
+
+              {/* Learning Milestones List */}
+              <Card style={{ padding: '32px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
+                  <div>
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>Learning Milestones</h3>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+                      Check milestones off as you complete them to track your placement readiness.
+                    </p>
+                  </div>
+                  <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--primary)' }}>
+                    {milestones.filter(m => m.completed).length} of {milestones.length} Completed
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  {milestones.map((step, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        display: 'flex',
+                        gap: '16px',
+                        alignItems: 'flex-start',
+                        padding: '16px',
+                        backgroundColor: step.completed ? 'rgba(16, 185, 129, 0.04)' : 'var(--bg-main)',
+                        borderRadius: 'var(--radius-md)',
+                        border: step.completed ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid var(--border-light)',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
                       <input
                         type="checkbox"
-                        checked={step.completed}
+                        checked={Boolean(step.completed)}
                         onChange={() => handleToggleStep(step.id, step.completed)}
-                        style={{ width: '20px', height: '20px', marginTop: '4px', cursor: 'pointer' }}
+                        style={{ width: '22px', height: '22px', marginTop: '2px', cursor: 'pointer', accentColor: 'var(--primary)' }}
+                        id={`milestone-${step.id}`}
                       />
                       <div style={{ flex: 1 }}>
-                        <h4 style={{
-                          fontSize: '1.05rem',
-                          fontWeight: 700,
-                          margin: '0 0 6px 0',
-                          textDecoration: step.completed ? 'line-through' : 'none',
-                          color: step.completed ? 'var(--text-light)' : 'var(--text-main)'
-                        }}>
-                          {step.title}
-                        </h4>
-                        <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: 0 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '6px' }}>
+                          <label
+                            htmlFor={`milestone-${step.id}`}
+                            style={{
+                              fontSize: '1.05rem',
+                              fontWeight: 700,
+                              margin: 0,
+                              cursor: 'pointer',
+                              textDecoration: step.completed ? 'line-through' : 'none',
+                              color: step.completed ? 'var(--text-light)' : 'var(--text-main)'
+                            }}
+                          >
+                            Milestone {step.id}: {step.title}
+                          </label>
+                          {step.estimated_duration && (
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', backgroundColor: 'var(--bg-card)', padding: '2px 8px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
+                              ⏱ {step.estimated_duration}
+                            </span>
+                          )}
+                        </div>
+                        <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: '0 0 10px 0', lineHeight: 1.5 }}>
                           {step.desc}
                         </p>
+                        {step.resources && (
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-light)' }}>
+                            📚 <strong>Recommended Resources:</strong> {step.resources}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
                 </div>
               </Card>
+
             </div>
 
             {/* Goal Overview Column */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              
+              {/* Dynamic Goal Progress Card */}
               <Card style={{ padding: '28px', textAlign: 'center' }}>
-                <h3 style={{ fontSize: '1.1rem', color: 'var(--text-muted)', marginBottom: '8px' }}>Target Placement</h3>
-                <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary)', marginBottom: '20px' }}>{roadmap.career_goal}</h4>
+                <h3 style={{ fontSize: '1rem', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Target Placement Role
+                </h3>
+                <h4 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--primary)', marginBottom: '20px' }}>
+                  {roadmap.career_goal}
+                </h4>
                 
                 <div style={{
-                  width: '100px',
-                  height: '100px',
+                  width: '110px',
+                  height: '110px',
                   borderRadius: '50%',
                   backgroundColor: 'rgba(79, 70, 229, 0.08)',
                   color: 'var(--primary)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '1.8rem',
+                  fontSize: '2rem',
                   fontWeight: 800,
-                  margin: '0 auto 16px auto'
+                  margin: '0 auto 16px auto',
+                  border: '4px solid rgba(79, 70, 229, 0.2)'
                 }}>
                   {roadmap.progress_percent}%
                 </div>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Goal progress percentage</p>
-                <div style={{ height: '6px', width: '100%', backgroundColor: 'var(--border-light)', borderRadius: '3px', marginTop: '12px' }}>
-                  <div style={{ height: '100%', width: `${roadmap.progress_percent}%`, backgroundColor: 'var(--primary)', borderRadius: '3px' }}></div>
+                
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0 0 12px 0' }}>
+                  Calculated dynamically from completed milestones
+                </p>
+                
+                <div style={{ height: '8px', width: '100%', backgroundColor: 'var(--border-light)', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div style={{
+                    height: '100%',
+                    width: `${roadmap.progress_percent}%`,
+                    backgroundColor: roadmap.progress_percent === 100 ? 'var(--success)' : 'var(--primary)',
+                    borderRadius: '4px',
+                    transition: 'width 0.4s ease'
+                  }}></div>
                 </div>
               </Card>
 
-              {/* Options to regenerate goal */}
+              {/* Options to switch/regenerate goal */}
               <Card style={{ padding: '28px' }}>
-                <h3 style={{ fontSize: '1.1rem', marginBottom: '16px' }}>Switch Placement Goal</h3>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '12px' }}>Change Target Role</h3>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
+                  Select a different career goal to generate an updated roadmap matching your skills to the new target.
+                </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <select
                     className="input-field"
@@ -228,15 +340,16 @@ const CareerRoadmap = () => {
                     onChange={(e) => setCareerGoal(e.target.value)}
                     style={{ appearance: 'auto', margin: 0 }}
                   >
-                    <option value="Full Stack Software Engineer">Full Stack Software Engineer</option>
-                    <option value="Frontend Developer">Frontend Developer</option>
-                    <option value="Backend Engineer">Backend Engineer</option>
+                    {careerRoles.map((role, idx) => (
+                      <option key={idx} value={role.name}>{role.name}</option>
+                    ))}
                   </select>
-                  <Button variant="outline" onClick={handleGenerate} loading={generating}>
-                    Re-Generate Roadmap
+                  <Button variant="primary" onClick={() => handleGenerate(careerGoal)} loading={generating}>
+                    Generate New Roadmap
                   </Button>
                 </div>
               </Card>
+
             </div>
 
           </div>

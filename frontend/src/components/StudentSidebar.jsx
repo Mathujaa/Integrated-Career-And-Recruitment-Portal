@@ -1,24 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { NavLink } from 'react-router-dom';
-import apiClient from '../services/api.client';
 
 const StudentSidebar = () => {
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  useEffect(() => {
-    fetchUnreadNotifications();
-  }, []);
-
-  const fetchUnreadNotifications = async () => {
-    try {
-      const response = await apiClient.get('/student/notifications');
-      const unread = response.data.notifications.filter(n => !n.is_read).length;
-      setUnreadCount(unread);
-    } catch (err) {
-      console.warn('Failed to load notifications counts', err.message);
-    }
-  };
-
   const menuItems = [
     { name: 'Dashboard', path: '/student/dashboard', icon: '📊' },
     { name: 'My Profile', path: '/student/profile', icon: '👤' },
@@ -29,9 +12,7 @@ const StudentSidebar = () => {
     { name: 'Applied Jobs', path: '/student/applications', icon: '💼' },
     { name: 'Saved Jobs', path: '/student/saved-jobs', icon: '⭐' },
     { name: 'Assessments', path: '/student/assessments', icon: '📝' },
-    { name: 'My Calendar', path: '/student/calendar', icon: '📅' },
     { name: 'Career Goals', path: '/student/roadmap', icon: '🗺' },
-    { name: 'Notifications', path: '/student/notifications', icon: '🔔', badge: true },
     { name: 'Settings', path: '/student/settings', icon: '⚙' }
   ];
 
@@ -70,18 +51,6 @@ const StudentSidebar = () => {
         >
           <span style={{ fontSize: '1.15rem' }}>{item.icon}</span>
           <span style={{ flex: 1 }}>{item.name}</span>
-          {item.badge && unreadCount > 0 && (
-            <span style={{
-              backgroundColor: 'var(--error)',
-              color: '#FFFFFF',
-              fontSize: '0.75rem',
-              fontWeight: 'bold',
-              padding: '2px 8px',
-              borderRadius: '10px'
-            }}>
-              {unreadCount}
-            </span>
-          )}
         </NavLink>
       ))}
     </aside>

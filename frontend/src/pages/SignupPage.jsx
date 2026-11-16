@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import Input from '../components/Input';
 import Button from '../components/Button';
 import Toast from '../components/Toast';
+import ThemeToggle from '../components/ThemeToggle';
 import '../styles/pages.css';
 
 const SignupPage = () => {
@@ -86,9 +87,12 @@ const SignupPage = () => {
     <div className="auth-container">
       <div className="auth-card fade-in" style={{ maxWidth: '540px' }}>
         <div className="auth-header">
-          <Link to="/" style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--primary)', marginBottom: '12px', display: 'inline-block' }}>
-            💼 CareerPortal
-          </Link>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <Link to="/" style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--primary)', display: 'inline-block' }}>
+              💼 CareerPortal
+            </Link>
+            <ThemeToggle />
+          </div>
           <h2 className="auth-title">Create Account</h2>
           <p className="auth-subtitle">Choose your user profile role to start registering</p>
         </div>

@@ -13,8 +13,11 @@ const ResumePreview = () => {
   const navigate = useNavigate();
   const [resume, setResume] = useState(null);
   const [profile, setProfile] = useState(null);
+  const [includePic, setIncludePic] = useState(false);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
+  const [toastMsg, setToastMsg] = useState('');
+  const [toastType, setToastType] = useState('success');
 
   useEffect(() => {
     fetchResumeAndProfile();
@@ -26,13 +29,42 @@ const ResumePreview = () => {
         apiClient.get(`/jobs/resumes/${id}`),
         apiClient.get('/student/profile')
       ]);
-      setResume(resResponse.data.resume);
-      setProfile(profResponse.data.profile);
+      const resData = resResponse.data.resume;
+      const profData = profResponse.data.profile;
+      setResume(resData);
+      setProfile(profData);
+      
+      const parsedResumeData = typeof resData.resume_data === 'string' ? JSON.parse(resData.resume_data) : resData.resume_data;
+      if (parsedResumeData?.include_profile_picture !== undefined) {
+        setIncludePic(Boolean(parsedResumeData.include_profile_picture));
+      } else {
+        setIncludePic(Boolean(profData?.avatar_url));
+      }
     } catch (err) {
       console.error(err);
       setErrorMsg('Failed to load resume details.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleIncludePic = async (checked) => {
+    setIncludePic(checked);
+    if (!resume) return;
+    const parsedResumeData = typeof resume.resume_data === 'string' ? JSON.parse(resume.resume_data) : resume.resume_data;
+    const updatedData = { ...parsedResumeData, include_profile_picture: checked };
+    try {
+      await apiClient.put(`/jobs/resumes/${id}`, {
+        title: resume.title,
+        template_name: resume.template_name,
+        include_photo: checked,
+        resume_data: updatedData
+      });
+      setResume(prev => ({ ...prev, include_photo: checked ? 1 : 0, resume_data: updatedData }));
+      setToastMsg(checked ? 'Profile picture included in preview and PDF.' : 'Profile picture hidden from preview and PDF.');
+      setToastType('success');
+    } catch (e) {
+      console.warn('Failed to sync picture setting:', e.message);
     }
   };
 
@@ -63,7 +95,10 @@ const ResumePreview = () => {
     );
   }
 
-  const rData = typeof resume.resume_data === 'string' ? JSON.parse(resume.resume_data) : resume.resume_data;
+  const rData = typeof resume.resume_data === 'string' ? JSON.parse(resume.resume_data) : (resume.resume_data || {});
+  const photoSource = rData?.resume_photo_source || resume?.resume_photo_source || 'profile';
+  const customPhotoUrl = rData?.resume_photo_url || resume?.resume_photo_url || null;
+  const activePhoto = includePic ? (photoSource === 'custom' && customPhotoUrl ? customPhotoUrl : profile?.avatar_url) : null;
 
   // Determine Styling based on selected template
   const getTemplateStyles = () => {
@@ -138,12 +173,34 @@ const ResumePreview = () => {
 
       <div className="fade-in">
         {/* Editor Actions bar (Hidden when printing) */}
-        <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+        <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap', gap: '16px' }}>
           <div>
             <h2 style={{ fontSize: '1.75rem', fontWeight: 800 }}>Resume Preview</h2>
             <p style={{ color: 'var(--text-muted)' }}>Visualize layout and export as a clean PDF.</p>
           </div>
-          <div style={{ display: 'flex', gap: '12px' }}>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              cursor: 'pointer',
+              fontSize: '0.9rem',
+              fontWeight: 600,
+              color: 'var(--text-main)',
+              padding: '8px 14px',
+              backgroundColor: 'var(--bg-card)',
+              borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--border-light)',
+              userSelect: 'none'
+            }}>
+              <input
+                type="checkbox"
+                checked={includePic}
+                onChange={(e) => handleToggleIncludePic(e.target.checked)}
+                style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--primary)' }}
+              />
+              Include Profile Picture
+            </label>
             <Button variant="outline" onClick={() => navigate('/student/resumes')}>
               Back to Builder
             </Button>
@@ -165,17 +222,43 @@ const ResumePreview = () => {
         }}>
           {/* Header */}
           <div style={style.header}>
-            <h1 style={style.title}>
-              {profile?.first_name} {profile?.last_name}
-            </h1>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', fontSize: '0.9rem', color: '#64748B', flexWrap: 'wrap', marginTop: '6px' }}>
-              <span>✉ {profile?.email || 'email@address.com'}</span>
-              {profile?.phone && <span>📞 {profile.phone}</span>}
-              {profile?.portfolio_url && <span>💻 {profile.portfolio_url}</span>}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: resume.template_name === 'classic' ? 'center' : 'flex-start',
+              gap: '24px',
+              marginBottom: '10px'
+            }}>
+              {includePic && activePhoto && (
+                <img
+                  src={activePhoto}
+                  alt={`${profile?.first_name || 'Candidate'} ${profile?.last_name || ''}`}
+                  style={{
+                    width: '76px',
+                    height: '76px',
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    border: '2px solid var(--border-light)',
+                    flexShrink: 0
+                  }}
+                />
+              )}
+              <div style={{ textAlign: resume.template_name === 'classic' ? 'center' : 'left' }}>
+                <h1 style={style.title}>
+                  {profile?.first_name} {profile?.last_name}
+                </h1>
+                <div style={{ display: 'flex', justifyContent: resume.template_name === 'classic' ? 'center' : 'flex-start', gap: '16px', fontSize: '0.9rem', color: '#64748B', flexWrap: 'wrap', marginTop: '6px' }}>
+                  <span>✉ {profile?.email || 'email@address.com'}</span>
+                  {profile?.phone && <span>📞 {profile.phone}</span>}
+                  {profile?.portfolio_url && <span>💻 {profile.portfolio_url}</span>}
+                </div>
+              </div>
             </div>
-            <p style={{ fontStyle: 'italic', marginTop: '10px', fontSize: '1.05rem', color: '#475569' }}>
-              {profile?.headline}
-            </p>
+            {profile?.headline && (
+              <p style={{ fontStyle: 'italic', marginTop: '8px', fontSize: '1rem', color: '#475569', margin: '6px 0 0 0' }}>
+                {profile?.headline}
+              </p>
+            )}
           </div>
 
           {/* Professional Summary */}
@@ -245,7 +328,7 @@ const ResumePreview = () => {
 
       {toastMsg && (
         <div className="toast-container no-print">
-          <Toast message={toastMsg} type="error" onClose={() => setErrorMsg('')} />
+          <Toast message={toastMsg} type={toastType} onClose={() => setToastMsg('')} />
         </div>
       )}
     </StudentLayout>

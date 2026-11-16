@@ -46,7 +46,7 @@ class AdminModel {
     const [deptPlacements] = await pool.query(
       `SELECT COALESCE(edu.field_of_study, 'General') as name, COUNT(DISTINCT o.student_id) as value
        FROM offers o
-       JOIN educations edu ON o.student_id = edu.student_id
+       LEFT JOIN educations edu ON o.student_id = edu.student_id
        WHERE o.status = 'accepted'
        GROUP BY edu.field_of_study
        ORDER BY value DESC
@@ -58,8 +58,13 @@ class AdminModel {
        FROM offers WHERE status = 'accepted'`
     );
 
-    const totalOffers   = safe(offersSent, 'count');
+    const [declinedOffersRow] = await pool.query("SELECT COUNT(*) as count FROM offers WHERE status IN ('rejected', 'declined')");
+    const [pendingOffersRow]  = await pool.query("SELECT COUNT(*) as count FROM offers WHERE status = 'pending'");
+
+    const totalOffers    = safe(offersSent, 'count');
     const acceptedOffers = safe(offersAccepted, 'count');
+    const declinedOffers = safe(declinedOffersRow, 'count');
+    const pendingOffers  = safe(pendingOffersRow, 'count');
     const offerAcceptRate = totalOffers > 0
       ? Math.round((acceptedOffers / totalOffers) * 100)
       : 0;
@@ -86,8 +91,8 @@ class AdminModel {
         // For donut chart
         offerBreakdown: [
           { name: 'Accepted', value: acceptedOffers },
-          { name: 'Pending',  value: Math.max(0, totalOffers - acceptedOffers - safe(offersAccepted, 'count')) },
-          { name: 'Declined', value: 0 }
+          { name: 'Pending',  value: pendingOffers },
+          { name: 'Declined', value: declinedOffers }
         ]
       }
     };
@@ -448,7 +453,7 @@ class AdminModel {
         COUNT(*) as total,
         SUM(CASE WHEN status = 'accepted' THEN 1 ELSE 0 END) as accepted,
         SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
-        SUM(CASE WHEN status = 'declined' THEN 1 ELSE 0 END) as declined
+        SUM(CASE WHEN status IN ('declined', 'rejected') THEN 1 ELSE 0 END) as declined
        FROM offers`
     );
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import StudentLayout from '../components/StudentLayout';
 import Card from '../components/Card';
 import Input from '../components/Input';
@@ -45,9 +45,80 @@ const StudentProfile = () => {
   const [selectedAch, setSelectedAch] = useState(null);
   const [achForm, setAchForm] = useState({ title: '', description: '', date_earned: '' });
 
+  // Profile Photo Management states
+  const fileInputRef = useRef(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoModalOpen, setPhotoModalOpen] = useState(false);
+  const [savingPhoto, setSavingPhoto] = useState(false);
+  const [removingPhoto, setRemovingPhoto] = useState(false);
+
   // Notifications
   const [toastMsg, setToastMsg] = useState('');
   const [toastType, setToastType] = useState('success');
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      showToast('Please upload a JPG, JPEG, PNG, or WebP image.', 'error');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('Image file size must be less than 5MB.', 'error');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setPhotoPreview(event.target.result);
+      setPhotoFile(file);
+      setPhotoModalOpen(true);
+    };
+    reader.readAsDataURL(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleSavePhoto = async () => {
+    if (!photoPreview) return;
+    setSavingPhoto(true);
+    try {
+      const res = await apiClient.post('/student/profile-photo', { photo: photoPreview });
+      const newUrl = res.data.avatar_url;
+      setProfile(prev => ({ ...prev, avatar_url: newUrl }));
+      setBasicForm(prev => ({ ...prev, avatar_url: newUrl }));
+      setPhotoModalOpen(false);
+      setPhotoPreview(null);
+      setPhotoFile(null);
+      showToast('Profile photo updated successfully!');
+    } catch (err) {
+      console.error(err);
+      showToast(err.response?.data?.message || 'Failed to upload photo.', 'error');
+    } finally {
+      setSavingPhoto(false);
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    if (!window.confirm('Are you sure you want to remove your profile photo?')) return;
+    setRemovingPhoto(true);
+    try {
+      await apiClient.delete('/student/profile-photo');
+      setProfile(prev => ({ ...prev, avatar_url: null }));
+      setBasicForm(prev => ({ ...prev, avatar_url: '' }));
+      showToast('Profile photo removed.');
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to remove profile photo.', 'error');
+    } finally {
+      setRemovingPhoto(false);
+    }
+  };
 
   useEffect(() => {
     fetchProfile();
@@ -268,19 +339,83 @@ const StudentProfile = () => {
         {/* Header Basics Card */}
         <Card style={{ position: 'relative' }}>
           <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-            <div style={{
-              width: '100px',
-              height: '100px',
-              borderRadius: '50%',
-              backgroundColor: 'rgba(79, 70, 229, 0.1)',
-              color: 'var(--primary)',
-              fontSize: '3rem',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              border: '2px dashed var(--primary)'
-            }}>
-              {profile?.first_name ? profile.first_name[0] : 'U'}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+              <div style={{
+                width: '110px',
+                height: '110px',
+                borderRadius: '50%',
+                backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                color: 'var(--primary)',
+                fontSize: '3rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '2px dashed var(--primary)',
+                overflow: 'hidden',
+                position: 'relative',
+                boxShadow: 'var(--shadow-sm)'
+              }}>
+                {profile?.avatar_url ? (
+                  <img
+                    src={profile.avatar_url}
+                    alt={`${profile.first_name || 'Student'} avatar`}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                ) : (
+                  profile?.first_name ? profile.first_name[0].toUpperCase() : 'U'
+                )}
+              </div>
+
+              {/* Photo Management Actions */}
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{
+                    padding: '4px 10px',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    borderRadius: '6px',
+                    border: '1px solid var(--border-light)',
+                    background: 'var(--bg-main)',
+                    color: 'var(--primary)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                  title="Upload or change photo from device"
+                >
+                  📷 {profile?.avatar_url ? 'Change Photo' : 'Upload Photo'}
+                </button>
+                {profile?.avatar_url && (
+                  <button
+                    type="button"
+                    onClick={handleRemovePhoto}
+                    disabled={removingPhoto}
+                    style={{
+                      padding: '4px 8px',
+                      fontSize: '0.78rem',
+                      fontWeight: 600,
+                      borderRadius: '6px',
+                      border: '1px solid rgba(239, 68, 68, 0.3)',
+                      background: 'rgba(239, 68, 68, 0.08)',
+                      color: 'var(--error, #ef4444)',
+                      cursor: 'pointer'
+                    }}
+                    title="Remove current photo"
+                  >
+                    🗑️ Remove
+                  </button>
+                )}
+              </div>
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/jpeg,image/png,image/webp"
+                style={{ display: 'none' }}
+                onChange={handleFileSelect}
+              />
             </div>
             
             <div style={{ flex: 1 }}>
@@ -291,6 +426,7 @@ const StudentProfile = () => {
                   <Input label="Professional Headline" id="headline" value={basicForm.headline || ''} onChange={(e) => setBasicForm({ ...basicForm, headline: e.target.value })} className="auth-form-full" placeholder="e.g. Student at ABC University" />
                   <Input label="Contact Phone" id="phone" value={basicForm.phone || ''} onChange={(e) => setBasicForm({ ...basicForm, phone: e.target.value })} />
                   <Input label="Date of Birth" id="dob" type="date" value={basicForm.date_of_birth ? basicForm.date_of_birth.substring(0,10) : ''} onChange={(e) => setBasicForm({ ...basicForm, date_of_birth: e.target.value })} />
+                  <Input label="Profile Picture Image URL" id="avatarUrl" type="url" placeholder="https://example.com/avatar.jpg" value={basicForm.avatar_url || ''} onChange={(e) => setBasicForm({ ...basicForm, avatar_url: e.target.value })} className="auth-form-full" />
                   <Input label="GitHub URL" id="github" type="url" value={basicForm.github_url || ''} onChange={(e) => setBasicForm({ ...basicForm, github_url: e.target.value })} />
                   <Input label="LinkedIn URL" id="linkedin" type="url" value={basicForm.linkedin_url || ''} onChange={(e) => setBasicForm({ ...basicForm, linkedin_url: e.target.value })} />
                   <Input label="Portfolio Website" id="portfolio" type="url" value={basicForm.portfolio_url || ''} onChange={(e) => setBasicForm({ ...basicForm, portfolio_url: e.target.value })} className="auth-form-full" />
@@ -690,6 +826,49 @@ const StudentProfile = () => {
             <Button type="submit" variant="primary">Log Achievement</Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Profile Photo Preview & Save Modal */}
+      <Modal
+        isOpen={photoModalOpen}
+        onClose={() => { setPhotoModalOpen(false); setPhotoPreview(null); }}
+        title="Preview & Save Profile Photo"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '12px 0' }}>
+          <div style={{
+            width: '140px',
+            height: '140px',
+            borderRadius: '50%',
+            overflow: 'hidden',
+            border: '3px solid var(--primary)',
+            boxShadow: 'var(--shadow-md)',
+            backgroundColor: 'rgba(79, 70, 229, 0.05)'
+          }}>
+            {photoPreview && (
+              <img
+                src={photoPreview}
+                alt="New Profile Preview"
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            )}
+          </div>
+          {photoFile && (
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0, textAlign: 'center' }}>
+              <strong>{photoFile.name}</strong> ({(photoFile.size / 1024).toFixed(1)} KB)
+            </p>
+          )}
+          <p style={{ fontSize: '0.82rem', color: 'var(--text-light)', margin: 0, textAlign: 'center', maxWidth: '320px' }}>
+            Supported formats: JPG, PNG, WebP (Max 5MB). Photo persists in your profile and updates across the portal.
+          </p>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', width: '100%', marginTop: '16px' }}>
+            <Button variant="outline" onClick={() => { setPhotoModalOpen(false); setPhotoPreview(null); }}>
+              Cancel
+            </Button>
+            <Button variant="primary" onClick={handleSavePhoto} loading={savingPhoto}>
+              Save Photo
+            </Button>
+          </div>
+        </div>
       </Modal>
 
       {toastMsg && (

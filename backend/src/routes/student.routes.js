@@ -11,6 +11,13 @@ router.use(restrictTo('student'));
 
 router.get('/profile', StudentController.getStudentProfile);
 router.put('/profile', StudentController.updateStudentProfile);
+router.post('/profile-photo', StudentController.uploadProfilePhoto);
+router.delete('/profile-photo', StudentController.removeProfilePhoto);
+
+// Resume Photo Management
+router.post('/resumes/:id/photo', StudentController.uploadResumePhoto);
+router.put('/resumes/:id/photo-settings', StudentController.updateResumePhotoSettings);
+router.delete('/resumes/:id/photo', StudentController.removeResumePhoto);
 
 router.post('/education', StudentController.addEducation);
 router.delete('/education/:id', StudentController.deleteEducation);
@@ -45,9 +52,15 @@ router.get('/assessments', StudentController.getAssessments);
 router.post('/assessments/:id/submit', StudentController.submitAssessment);
 router.get('/assessments/leaderboard', StudentController.getLeaderboard);
 
+// Career Roles Directory
+router.get('/career-roles', StudentController.getCareerRoles);
+
 // V2 Roadmap & Career Goals
 router.get('/roadmap', StudentController.getRoadmap);
 router.post('/roadmap', StudentController.saveRoadmap);
+router.post('/roadmap/generate', StudentController.generateRoadmap);
+router.post('/roadmap/milestone/toggle', StudentController.toggleMilestone);
+router.post('/roadmap/checklist/toggle', StudentController.toggleInterviewChecklist);
 
 // V2 Calendars & Agenda
 router.get('/calendar', StudentController.getCalendar);

@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { SECURITY_CONFIG } from '../config/security.config.js';
 
 class TokenService {
@@ -15,7 +16,8 @@ class TokenService {
 
   generateRefreshToken(user) {
     const payload = {
-      id: user.id
+      id: user.id,
+      jti: crypto.randomUUID()
     };
     return jwt.sign(payload, SECURITY_CONFIG.jwt.refreshSecret, {
       expiresIn: SECURITY_CONFIG.jwt.refreshExpiry

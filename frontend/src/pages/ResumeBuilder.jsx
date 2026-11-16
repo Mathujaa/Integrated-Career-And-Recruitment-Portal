@@ -19,6 +19,12 @@ const ResumeBuilder = () => {
   // Resume form fields
   const [resumeTitle, setResumeTitle] = useState('My Resume');
   const [templateName, setTemplateName] = useState('classic');
+  const [includeProfilePic, setIncludeProfilePic] = useState(false);
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState(null);
+  const [photoSource, setPhotoSource] = useState('profile'); // 'profile' | 'custom'
+  const [customPhotoUrl, setCustomPhotoUrl] = useState(null);
+  const [uploadingResumePhoto, setUploadingResumePhoto] = useState(false);
+  const resumeFileInputRef = useRef(null);
   const [summary, setSummary] = useState('');
   const [skillsText, setSkillsText] = useState('');
   const [educations, setEducations] = useState([]);
@@ -44,10 +50,22 @@ const ResumeBuilder = () => {
 
   useEffect(() => {
     fetchResumes();
+    fetchStudentProfile();
     return () => {
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     };
   }, []);
+
+  const fetchStudentProfile = async () => {
+    try {
+      const response = await apiClient.get('/student/profile');
+      if (response.data.profile?.avatar_url) {
+        setProfileAvatarUrl(response.data.profile.avatar_url);
+      }
+    } catch (e) {
+      console.warn('Could not prefetch profile avatar:', e.message);
+    }
+  };
 
   // Trigger auto-save when values change in editor mode
   useEffect(() => {
@@ -61,7 +79,7 @@ const ResumeBuilder = () => {
       executeAutoSave();
     }, 5000);
 
-  }, [resumeTitle, templateName, summary, skillsText, educations, experiences, projects, customSections]);
+  }, [resumeTitle, templateName, includeProfilePic, photoSource, customPhotoUrl, summary, skillsText, educations, experiences, projects, customSections]);
 
   const fetchResumes = async () => {
     setLoading(true);
@@ -81,18 +99,89 @@ const ResumeBuilder = () => {
     setToastType(type);
   };
 
+  const handleResumeFileSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      showToast('Please upload a JPG, JPEG, PNG, or WebP image.', 'error');
+      if (resumeFileInputRef.current) resumeFileInputRef.current.value = '';
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('File size must be under 5MB.', 'error');
+      if (resumeFileInputRef.current) resumeFileInputRef.current.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      const dataUrl = evt.target.result;
+      setUploadingResumePhoto(true);
+
+      if (currentResumeId) {
+        try {
+          const res = await apiClient.post(`/student/resumes/${currentResumeId}/photo`, { photo: dataUrl });
+          const newUrl = res.data.resume_photo_url;
+          setCustomPhotoUrl(newUrl);
+          setPhotoSource('custom');
+          setIncludeProfilePic(true);
+          showToast('Resume-specific photo uploaded successfully!');
+        } catch (err) {
+          console.error(err);
+          showToast('Failed to upload resume photo.', 'error');
+        } finally {
+          setUploadingResumePhoto(false);
+        }
+      } else {
+        // Unsaved new resume: hold dataUrl in state until resume created
+        setCustomPhotoUrl(dataUrl);
+        setPhotoSource('custom');
+        setIncludeProfilePic(true);
+        setUploadingResumePhoto(false);
+        showToast('Resume picture attached. It will save with your resume.');
+      }
+    };
+    reader.readAsDataURL(file);
+    if (resumeFileInputRef.current) resumeFileInputRef.current.value = '';
+  };
+
+  const handleRemoveResumePhoto = async () => {
+    if (currentResumeId) {
+      try {
+        await apiClient.put(`/student/resumes/${currentResumeId}/photo-settings`, {
+          remove_custom_photo: true,
+          photo_source: 'profile'
+        });
+      } catch (e) {
+        console.warn('Remove resume photo call failed:', e.message);
+      }
+    }
+    setCustomPhotoUrl(null);
+    setPhotoSource('profile');
+    showToast('Resume picture removed.');
+  };
+
   const executeAutoSave = async () => {
     if (!editorMode) return;
     const payload = {
       title: resumeTitle,
       template_name: templateName,
+      resume_photo_url: customPhotoUrl,
+      resume_photo_source: photoSource,
+      include_photo: includeProfilePic,
       resume_data: {
         summary,
         skills: skillsText,
         educations,
         experiences,
         projects,
-        customSections
+        customSections,
+        include_profile_picture: includeProfilePic,
+        resume_photo_source: photoSource,
+        resume_photo_url: customPhotoUrl
       }
     };
 
@@ -113,6 +202,10 @@ const ResumeBuilder = () => {
       
       setResumeTitle('New Resume');
       setTemplateName('classic');
+      setProfileAvatarUrl(p.avatar_url || null);
+      setIncludeProfilePic(Boolean(p.avatar_url));
+      setPhotoSource('profile');
+      setCustomPhotoUrl(null);
       setSummary(p.bio || '');
       setSkillsText(p.skills?.map(s => s.name).join(', ') || '');
       setEducations(p.educations?.map(e => ({
@@ -135,6 +228,7 @@ const ResumeBuilder = () => {
     } catch (err) {
       setResumeTitle('My Resume');
       setTemplateName('classic');
+      setIncludeProfilePic(false);
       setSummary('');
       setSkillsText('');
       setEducations([]);
@@ -152,6 +246,9 @@ const ResumeBuilder = () => {
     setTemplateName(resume.template_name);
     
     const rData = typeof resume.resume_data === 'string' ? JSON.parse(resume.resume_data) : resume.resume_data;
+    setIncludeProfilePic(rData.include_profile_picture !== undefined ? Boolean(rData.include_profile_picture) : (resume.include_photo !== undefined ? Boolean(resume.include_photo) : Boolean(profileAvatarUrl)));
+    setPhotoSource(rData.resume_photo_source || resume.resume_photo_source || 'profile');
+    setCustomPhotoUrl(rData.resume_photo_url || resume.resume_photo_url || null);
     setSummary(rData.summary || '');
     setSkillsText(rData.skills || '');
     setEducations(rData.educations || []);
@@ -177,13 +274,19 @@ const ResumeBuilder = () => {
     const payload = {
       title: resumeTitle,
       template_name: templateName,
+      resume_photo_url: customPhotoUrl,
+      resume_photo_source: photoSource,
+      include_photo: includeProfilePic,
       resume_data: {
         summary,
         skills: skillsText,
         educations,
         experiences,
         projects,
-        customSections
+        customSections,
+        include_profile_picture: includeProfilePic,
+        resume_photo_source: photoSource,
+        resume_photo_url: customPhotoUrl
       }
     };
 
@@ -383,6 +486,168 @@ const ResumeBuilder = () => {
                       </select>
                     </div>
                   </div>
+
+                  {/* Independent Resume Photo Management */}
+                  <div style={{
+                    marginTop: '16px',
+                    padding: '16px',
+                    backgroundColor: 'var(--bg-main)',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--border-light)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', margin: 0 }}>
+                        <input
+                          type="checkbox"
+                          id="includeProfilePicture"
+                          checked={includeProfilePic}
+                          onChange={(e) => setIncludeProfilePic(e.target.checked)}
+                          style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--primary)' }}
+                        />
+                        <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-main)' }}>
+                          Include Profile Picture in Resume
+                        </span>
+                      </label>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: includeProfilePic ? 'var(--success)' : 'var(--text-muted)' }}>
+                        {includeProfilePic ? '✔ Enabled' : 'Disabled'}
+                      </span>
+                    </div>
+
+                    {includeProfilePic && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingTop: '12px', borderTop: '1px dashed var(--border-light)' }}>
+                        {/* Radio options for Photo Source */}
+                        <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.88rem', color: 'var(--text-main)', fontWeight: photoSource === 'profile' ? 700 : 500 }}>
+                            <input
+                              type="radio"
+                              name="photoSource"
+                              value="profile"
+                              checked={photoSource === 'profile'}
+                              onChange={() => setPhotoSource('profile')}
+                              style={{ accentColor: 'var(--primary)', cursor: 'pointer' }}
+                            />
+                            Use My Profile Picture
+                          </label>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.88rem', color: 'var(--text-main)', fontWeight: photoSource === 'custom' ? 700 : 500 }}>
+                            <input
+                              type="radio"
+                              name="photoSource"
+                              value="custom"
+                              checked={photoSource === 'custom'}
+                              onChange={() => setPhotoSource('custom')}
+                              style={{ accentColor: 'var(--primary)', cursor: 'pointer' }}
+                            />
+                            Upload a Different Picture
+                          </label>
+                        </div>
+
+                        {/* When Use My Profile Picture is selected */}
+                        {photoSource === 'profile' && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', backgroundColor: 'var(--bg-card)', borderRadius: '6px', border: '1px solid var(--border-light)' }}>
+                            {profileAvatarUrl ? (
+                              <>
+                                <img
+                                  src={profileAvatarUrl}
+                                  alt="Profile Avatar"
+                                  style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border-light)' }}
+                                />
+                                <div style={{ flex: 1 }}>
+                                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>Using Profile Picture</span>
+                                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>Synced from your My Profile account</p>
+                                </div>
+                              </>
+                            ) : (
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: '8px' }}>
+                                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>No profile picture uploaded yet.</span>
+                                <button
+                                  type="button"
+                                  onClick={() => navigate('/student/profile')}
+                                  style={{
+                                    padding: '4px 10px',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 600,
+                                    borderRadius: '4px',
+                                    border: '1px solid var(--primary)',
+                                    background: 'rgba(79, 70, 229, 0.08)',
+                                    color: 'var(--primary)',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  📷 Upload in My Profile
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* When Upload a Different Picture is selected */}
+                        {photoSource === 'custom' && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', backgroundColor: 'var(--bg-card)', borderRadius: '6px', border: '1px solid var(--border-light)' }}>
+                              {customPhotoUrl ? (
+                                <>
+                                  <img
+                                    src={customPhotoUrl}
+                                    alt="Custom Resume Photo"
+                                    style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--primary)' }}
+                                  />
+                                  <div style={{ flex: 1 }}>
+                                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>Custom Resume Picture Active</span>
+                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>Independent photo for this resume only (does not overwrite profile picture)</p>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => resumeFileInputRef.current?.click()}
+                                    style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid var(--border-light)', background: 'var(--bg-main)', cursor: 'pointer' }}
+                                  >
+                                    Change
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={handleRemoveResumePhoto}
+                                    style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#ef4444', background: 'rgba(239, 68, 68, 0.08)', cursor: 'pointer' }}
+                                  >
+                                    Remove
+                                  </button>
+                                </>
+                              ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: '8px' }}>
+                                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>No separate resume photo selected yet.</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => resumeFileInputRef.current?.click()}
+                                    disabled={uploadingResumePhoto}
+                                    style={{
+                                      padding: '6px 12px',
+                                      fontSize: '0.8rem',
+                                      fontWeight: 600,
+                                      borderRadius: '4px',
+                                      border: '1px solid var(--primary)',
+                                      background: 'var(--primary)',
+                                      color: '#FFFFFF',
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    {uploadingResumePhoto ? 'Uploading...' : '📤 Upload Resume Picture'}
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                            <input
+                              type="file"
+                              ref={resumeFileInputRef}
+                              accept="image/jpeg,image/png,image/webp"
+                              style={{ display: 'none' }}
+                              onChange={handleResumeFileSelect}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </Card>
 
                 <Card>
@@ -481,8 +746,31 @@ const ResumeBuilder = () => {
                   boxShadow: 'var(--shadow-lg)'
                 }}>
                   <div style={previewStyle.header}>
-                    <h3 style={previewStyle.title}>Candidate Preview</h3>
-                    <span style={{ fontSize: '0.75rem', color: '#64748B' }}>Live template design: {templateName}</span>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '16px',
+                      justifyContent: templateName === 'classic' ? 'center' : 'flex-start'
+                    }}>
+                      {includeProfilePic && (photoSource === 'custom' ? customPhotoUrl : profileAvatarUrl) && (
+                        <img
+                          src={photoSource === 'custom' ? customPhotoUrl : profileAvatarUrl}
+                          alt="Candidate"
+                          style={{
+                            width: '56px',
+                            height: '56px',
+                            borderRadius: '50%',
+                            objectFit: 'cover',
+                            border: '2px solid var(--primary)',
+                            flexShrink: 0
+                          }}
+                        />
+                      )}
+                      <div>
+                        <h3 style={previewStyle.title}>Candidate Preview</h3>
+                        <span style={{ fontSize: '0.75rem', color: '#64748B' }}>Live template design: {templateName}</span>
+                      </div>
+                    </div>
                   </div>
 
                   {summary && (

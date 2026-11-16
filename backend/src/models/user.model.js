@@ -86,7 +86,7 @@ class UserModel {
   // Refresh Token operations
   async createRefreshToken(userId, token, expiresAt) {
     await pool.execute(
-      'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES (?, ?, ?)',
+      'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE expires_at = VALUES(expires_at)',
       [userId, token, expiresAt]
     );
   }
