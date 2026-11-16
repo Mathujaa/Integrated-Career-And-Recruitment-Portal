@@ -1,45 +1,50 @@
 # 🎓 Integrated Career & Recruitment Portal
 
-A full-stack Career & Recruitment Portal designed to streamline the campus placement process by connecting **Students, Recruiters, and Administrators** on a single platform. The portal enables job posting, applications, technical assessments, project reviews, interview scheduling, offer management, and placement analytics through dedicated dashboards.
+A full-stack **Career & Recruitment Portal** designed to streamline the campus placement process by connecting Students, Recruiters, and Administrators on a single platform.
+
+The platform provides dedicated dashboards and integrated tools to manage recruitment activities, including job postings, applications, assessments, interviews, project reviews, offer management, career development, and placement analytics.
 
 ---
 
 ## 📌 Project Overview
 
-The Integrated Career & Recruitment Portal digitizes the entire recruitment workflow followed by educational institutions.
+The Integrated Career & Recruitment Portal digitizes the campus recruitment workflow followed by educational institutions.
 
-Students can build professional profiles, apply for jobs, attend recruiter assessments, upload projects, and track applications.
-
-Recruiters can publish jobs, create assessments, review candidate projects, shortlist applicants, schedule interviews, provide rejection feedback, and extend offer letters.
-
-Administrators manage the entire platform by approving recruiters, monitoring placements, viewing reports, auditing activities, and maintaining system integrity.
+- **Students** can create professional profiles, build resumes, explore job opportunities, apply for positions, attend assessments, track applications, and receive personalized career guidance.
+- **Recruiters** can publish job opportunities, create assessments, review candidates, shortlist applicants, schedule interviews, and manage placement offers.
+- **Administrators** can manage platform activities, approve recruiters, monitor recruitment progress, and access placement analytics.
 
 ---
 
-# ✨ Key Features
+## ✨ Key Features
 
-## 👨‍🎓 Student Portal
+### 👨‍🎓 Student Portal
 
-- Student Registration & Login
+- Student Registration and Login
+- Google Authentication (when configured)
 - Professional Profile Management
-- Resume Upload
-- Resume Builder
-- Skills & Certifications
-- Educational Details
-- Project Portfolio Upload
-- Browse Available Jobs
+- Profile Picture Upload and Customization
+- Resume Upload and Resume Builder
+- Customizable Resume Templates
+- Option to Include or Exclude Profile Picture in Resumes
+- Skills, Certifications, and Educational Details
+- Project Portfolio Management
+- Browse and Search Job Opportunities
 - Apply for Jobs
 - Track Application Status
 - Attend Recruiter Assessments
 - View Assessment Results
-- Interview Schedule Tracking
-- Offer Letter Management
-- Notifications Center
-- Placement Progress Dashboard
+- Track Interview Schedules
+- Manage Placement Offers
+- AI Resume Scanner
+- ATS Compatibility Analysis
+- AI Career Mentor
+- Personalized Skill Gap Analysis
+- Dynamic Career Goals and Learning Roadmaps
+- Placement Progress Tracking
+- Notification Bell
 
----
-
-## 🏢 Recruiter Portal
+### 🏢 Recruiter Portal
 
 - Recruiter Registration
 - Admin Approval Workflow
@@ -49,20 +54,18 @@ Administrators manage the entire platform by approving recruiters, monitoring pl
 - Create Technical Assessments
 - Review Candidate Assessment Scores
 - Review Student Projects
-- Rate Projects
+- Rate Student Projects
 - Provide Rejection Feedback
 - Shortlist Candidates
 - Schedule Interviews
 - Extend Offer Letters
 - View Hiring Analytics
-- Notifications
+- Notification Management
 
----
-
-## 🛡️ Admin Portal
+### 🛡️ Admin Portal
 
 - Secure Admin Login
-- Recruiter Approval & Suspension
+- Recruiter Approval and Suspension
 - Student Management
 - Recruiter Management
 - Job Moderation
@@ -73,48 +76,61 @@ Administrators manage the entire platform by approving recruiters, monitoring pl
 - Audit Logs
 - Report Generation
 - CSV Export
-- Notification Center
+- Notification Management
 - System Settings
 
 ---
 
-# 📊 Dashboards
+## 📊 Dashboards
 
 ### Student Dashboard
-
+- Placement Progress
 - Applied Jobs
-- Upcoming Interviews
-- Pending Assessments
-- Offer Letters
-- Career Progress
-- Notifications
+- Upcoming Assessments
+- Latest Application Status
+- ATS Compatibility Score
+- Career Development Tracking
 
 ### Recruiter Dashboard
-
 - Total Jobs
 - Active Jobs
 - Applications Received
-- Assessments Published
+- Published Assessments
 - Shortlisted Candidates
 - Hiring Pipeline
 - Offer Acceptance Rate
 
 ### Admin Dashboard
-
 - Total Students
 - Total Recruiters
 - Active Jobs
-- Applications
-- Placements
-- Interviews
+- Total Applications
+- Placement Statistics
+- Interview Statistics
 - Offer Statistics
 - Placement Analytics
 
 ---
 
-# 📈 Analytics
+## 🤖 AI-Powered Features
 
-The portal provides interactive analytics using **Recharts**.
+### AI Resume Scanner
+Analyzes uploaded resumes and provides ATS compatibility insights to help candidates improve their resumes.
+
+### AI Career Mentor
+Provides personalized career guidance based on candidate profiles, skills, education, projects, and target placement roles.
+
+### Career Goals and Learning Roadmap
+Generates personalized learning milestones, identifies missing skills, and tracks progress toward the selected career goal.
+
+### Skill Gap Analysis
+Compares candidate skills with target role requirements and highlights areas that need improvement.
+
+---
+
+## 📈 Placement Analytics
+
+The portal provides interactive analytics using Recharts.
 
 - Monthly Applications
 - Company-wise Placements
@@ -126,19 +142,18 @@ The portal provides interactive analytics using **Recharts**.
 
 ---
 
-# 🛠 Technology Stack
+## 🛠️ Technology Stack
 
-## Frontend
-
+### Frontend
 - React.js
 - Vite
 - React Router
 - Axios
+- HTML5
 - CSS3
 - Recharts
 
-## Backend
-
+### Backend
 - Node.js
 - Express.js
 - JWT Authentication
@@ -146,28 +161,27 @@ The portal provides interactive analytics using **Recharts**.
 - Multer
 - Nodemailer
 
-## Database
-
+### Database
 - MySQL
 
 ---
 
-# 📂 Project Structure
+## 📂 Project Structure
 
-```
-Integrated-Career-And-Recruitment-Portal
+```text
+Integrated-Career-And-Recruitment-Portal/
 │
-├── backend
-│   ├── controllers
-│   ├── middleware
-│   ├── models
-│   ├── routes
-│   ├── uploads
+├── backend/
+│   ├── controllers/
+│   ├── middleware/
+│   ├── models/
+│   ├── routes/
+│   ├── uploads/
 │   └── server.js
 │
-├── frontend
-│   ├── src
-│   ├── public
+├── frontend/
+│   ├── src/
+│   ├── public/
 │   └── vite.config.js
 │
 ├── architecture_design.md
@@ -177,72 +191,64 @@ Integrated-Career-And-Recruitment-Portal
 
 ---
 
-# 🔐 Authentication
+## 🔐 Authentication and Authorization
 
-The system supports three user roles.
+The platform supports three user roles with role-based access.
 
-### Student
-
-- Register
-- Login
+**Student**
+- Register and Login
+- Manage Profile
 - Apply for Jobs
+- Attend Assessments
+- Track Applications
 
-### Recruiter
-
+**Recruiter**
 - Register
 - Wait for Admin Approval
-- Login
-- Manage Recruitment
+- Login after Approval
+- Manage Recruitment Activities
 
-### Administrator
+**Administrator**
+- Secure Login
+- Manage Students and Recruiters
+- Approve Recruiters
+- Monitor Platform Activities
 
-```
-Email:
-admin@careerportal.com
-
-Password:
-Admin@123
-```
+Authentication methods and access permissions depend on the application's configured environment.
 
 ---
 
-# 🚀 Installation
+## 🚀 Installation and Setup
 
-## Clone Repository
+### Prerequisites
+
+- Node.js
+- npm
+- MySQL
+- Git
+
+### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/Mathujaa/Integrated-Career-And-Recruitment-Portal.git
 ```
 
----
+```bash
+cd Integrated-Career-And-Recruitment-Portal
+```
 
-## Backend
+### 2. Backend Setup
+
+Open a terminal:
 
 ```bash
 cd backend
-
 npm install
-
-npm run dev
 ```
-
----
-
-## Frontend
-
-```bash
-cd frontend
-
-npm install
-
-npm run dev
-```
-
----
-
-# 🌐 Environment Variables
 
 Create a `.env` file inside the backend folder.
+
+### 3. Environment Variables
 
 ```env
 PORT=5000
@@ -255,30 +261,58 @@ DB_NAME=career_portal
 JWT_SECRET=your_secret_key
 ```
 
+Configure any additional environment variables required by your application.
+
+### 4. Start Backend
+
+```bash
+npm run dev
+```
+
+### 5. Frontend Setup
+
+Open another terminal:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The frontend will run at the local development URL provided by Vite, typically:
+
+```text
+http://localhost:5173
+```
+
 ---
 
-# 📸 Screenshots
+## 📸 Application Screenshots
 
-Add screenshots of the following pages.
+Screenshots of the major application modules can be added here.
 
-- Login
-- Student Dashboard
-- Recruiter Dashboard
-- Admin Dashboard
-- Job Listings
-- Assessment Module
-- Interview Management
-- Reports Dashboard
+Suggested screenshots:
+
+1. Login and Registration
+2. Student Dashboard
+3. Student Profile
+4. Resume Builder
+5. AI Resume Scanner
+6. AI Career Mentor
+7. Career Goals and Learning Roadmap
+8. Job Search and Applications
+9. Recruiter Dashboard
+10. Admin Dashboard
+11. Assessment Module
+12. Interview Management
+13. Placement Analytics
 
 ---
 
-# 🎯 Future Enhancements
+## 🔮 Future Enhancements
 
-- AI Resume Analyzer
-- Resume ATS Score
-- AI Career Recommendations
 - AI Interview Assistant
-- Resume PDF Generator
+- Advanced Resume PDF Customization
 - Company Chat System
 - Video Interview Integration
 - Email OTP Authentication
@@ -287,17 +321,18 @@ Add screenshots of the following pages.
 
 ---
 
-# 👩‍💻 Author
+## 👩‍💻 Author
 
-**Mathujaa P**
+**Mathujaa P M**
 
-Computer Science Engineering Student
+Computer Science and Engineering Student
 
-GitHub:
-https://github.com/Mathujaa
+- GitHub: https://github.com/Mathujaa
 
 ---
 
-# ⭐ If you found this project useful
+## ⭐ Support
 
-Please consider giving the repository a ⭐ on GitHub.
+If you find this project interesting, consider giving the repository a ⭐ on GitHub!
+
+Your support is appreciated.
